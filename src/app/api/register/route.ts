@@ -1,5 +1,7 @@
 import { MongoClient } from 'mongodb';
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 
 const uri = process.env.MONGODB_URI as string;
 const dbName = process.env.MONGODB_DB;
@@ -7,19 +9,23 @@ const dbName = process.env.MONGODB_DB;
 export async function POST(request: Request) {
   try {
     const userData = await request.json();
-    
-    if (!userData.uid || !userData.email) {
+
+    if (!userData.email) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
+    // Generate uid if not provided
+    const uid = userData.uid || randomUUID();
+    const email = userData.email.toLowerCase().trim();
+
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
-    
-    // Check if user already exists
-    const existingUser = await db.collection('users').findOne({ uid: userData.uid });
+
+    // Check if user already exists by email
+    const existingUser = await db.collection('users').findOne({ email });
     if (existingUser) {
       await client.close();
       return NextResponse.json(
@@ -28,13 +34,27 @@ export async function POST(request: Request) {
       );
     }
 
-    // Insert new user
-    const userResult = await db.collection('users').insertOne(userData);
+    // Hash password if provided
+    let passwordHash: string | undefined;
+    if (userData.password) {
+      passwordHash = await bcrypt.hash(userData.password, 12);
+    }
+
+    // Build the document (don't store plain password)
+    const { password: _omit, uid: _uidOmit, ...rest } = userData;
+    const userDoc = {
+      ...rest,
+      uid,
+      email,
+      ...(passwordHash ? { passwordHash } : {}),
+    };
+
+    const userResult = await db.collection('users').insertOne(userDoc);
 
     // If user is a salon, also insert into salons collection
-    if (userData.role === "salon") {
+    if (userData.role === 'salon') {
       await db.collection('salons').insertOne({
-        ...userData,
+        ...userDoc,
         userId: userResult.insertedId,
       });
     }
@@ -42,7 +62,7 @@ export async function POST(request: Request) {
     await client.close();
 
     return NextResponse.json(
-      { success: true, userId: userResult.insertedId },
+      { success: true, userId: userResult.insertedId, uid },
       { status: 201 }
     );
 

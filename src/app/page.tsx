@@ -3,8 +3,6 @@ import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Footer from "../components/footer";
 import Navbar from "../components/navbar";
-import { getAuth, onAuthStateChanged, signOut, User } from "firebase/auth";
-import { initializeApp } from "firebase/app";
 import { FiMapPin, FiPhone, FiScissors, FiStar } from "react-icons/fi";
 
 // --- Styles ---
@@ -17,7 +15,6 @@ const COLORS = {
 
 const featuredSalons = [
   {
-    name: "Urban Bliss Spa",
     location: "Innenstadt",
     slug: "urban-bliss-spa",
     image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80",
@@ -35,19 +32,6 @@ const featuredSalons = [
     image: "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=400&q=80",
   },
 ];
-
-// Firebase config (use env variables)
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 // --- Components ---
 function HeroSection({ onSearch }: { onSearch: (query: { name: string; treatment: string; date: string }) => void }) {
@@ -379,7 +363,7 @@ function HowItWorks() {
 export default function HomePage() {
   const router = useRouter();
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<{ email: string | null } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -392,19 +376,17 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // Check for login state from router
-    // @ts-ignore
-    const stateUser = typeof window !== "undefined" && window.history.state && window.history.state.user;
-    if (stateUser) {
-      setUser(stateUser);
-    } else {
-      const unsubscribe = onAuthStateChanged(auth, setUser);
-      return () => unsubscribe();
-    }
+    fetch("/api/auth/me")
+      .then(r => r.ok ? r.json() : null)
+      .then(u => setUser(u ? { email: u.email } : null))
+      .catch(() => setUser(null));
   }, []);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await fetch("/api/auth/logout", { method: "POST" });
+    setUser(null);
+    localStorage.removeItem("bookme_user");
+    localStorage.removeItem("userEmail");
     window.location.reload();
   };
 

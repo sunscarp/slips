@@ -1,7 +1,5 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { initializeApp } from "firebase/app";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
 
@@ -15,18 +13,6 @@ const COLORS = {
   success: "#10B981",
   error: "#EF4444",
 };
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 const WEEKDAYS = [
   "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"
@@ -67,72 +53,79 @@ export default function SalonProfilePage() {
   const [holidayRangeEnd, setHolidayRangeEnd] = useState("");
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser?.email) {
-        setLoading(true);
-        try {
-          // Check if this is system admin viewing another salon's profile
-          const urlParams = new URLSearchParams(window.location.search);
-          const salonUidParam = urlParams.get('salonUid');
-          const isSystemUser = firebaseUser.email === "system@gmail.com";
-          setIsSystemAdmin(isSystemUser);
-          
-          if (salonUidParam && isSystemUser) {
-            // System admin viewing specific salon profile
-            setViewingSalonUid(salonUidParam);
-            
-            // Fetch the specific salon data
-            const salonRes = await fetch(`/api/salons?uid=${encodeURIComponent(salonUidParam)}`);
-            if (salonRes.ok) {
-              const salonData = await salonRes.json();
-              const salon = salonData.salon;
-              setSalon(salon);
-              setSalonName(salon.name);
-              setSalonDescription(salon.description ?? "");
-              setSalonLocation(salon.location ?? "");
-              setGoogleMapsAddress(salon.googleMapsAddress ?? "");
-              setSalonContact(salon.contact ?? "");
+    const init = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) { window.location.href = '/login'; return; }
+        const currentUser = await res.json();
+        setUser(currentUser);
+        if (currentUser?.email) {
+          setLoading(true);
+          try {
+            // Check if this is system admin viewing another salon's profile
+            const urlParams = new URLSearchParams(window.location.search);
+            const salonUidParam = urlParams.get('salonUid');
+            const isSystemUser = currentUser.email === "system@gmail.com";
+            setIsSystemAdmin(isSystemUser);
+
+            if (salonUidParam && isSystemUser) {
+              // System admin viewing specific salon profile
+              setViewingSalonUid(salonUidParam);
+
+              // Fetch the specific salon data
+              const salonRes = await fetch(`/api/salons?uid=${encodeURIComponent(salonUidParam)}`);
+              if (salonRes.ok) {
+                const salonData = await salonRes.json();
+                const s = salonData.salon;
+                setSalon(s);
+                setSalonName(s.name);
+                setSalonDescription(s.description ?? "");
+                setSalonLocation(s.location ?? "");
+                setGoogleMapsAddress(s.googleMapsAddress ?? "");
+                setSalonContact(s.contact ?? "");
+                setImagePreviews(
+                  s.imageUrls || s.imageUrl
+                    ? (s.imageUrls ?? [s.imageUrl]).filter(Boolean)
+                    : []
+                );
+                setImageFiles([]);
+                setWorkingDays(s.workingDays ?? Object.fromEntries(WEEKDAYS.map(day => [day, { open: day !== "Sonntag", start: "09:00", end: "18:00" }])));
+                setHolidays(s.holidays ?? []);
+              }
+            } else {
+              // Normal flow for salon users
+              const salonRes = await fetch(`/api/salons?email=${encodeURIComponent(currentUser.email)}`);
+              if (!salonRes.ok) throw new Error("Salon nicht gefunden.");
+              const data = await salonRes.json();
+              const salonData = data.salon ?? data;
+              setSalon(salonData);
+              setSalonName(salonData.name);
+              setSalonDescription(salonData.description ?? "");
+              setSalonLocation(salonData.location ?? "");
+              setGoogleMapsAddress(salonData.googleMapsAddress ?? "");
+              setSalonContact(salonData.contact ?? "");
               setImagePreviews(
-                salon.imageUrls || salon.imageUrl
-                  ? (salon.imageUrls ?? [salon.imageUrl]).filter(Boolean)
+                salonData.imageUrls || salonData.imageUrl
+                  ? (salonData.imageUrls ?? [salonData.imageUrl]).filter(Boolean)
                   : []
               );
               setImageFiles([]);
-              setWorkingDays(salon.workingDays ?? Object.fromEntries(WEEKDAYS.map(day => [day, { open: day !== "Sonntag", start: "09:00", end: "18:00" }])));
-              setHolidays(salon.holidays ?? []);
+              setWorkingDays(salonData.workingDays ?? Object.fromEntries(WEEKDAYS.map(day => [day, { open: day !== "Sonntag", start: "09:00", end: "18:00" }])));
+              setHolidays(salonData.holidays ?? []);
             }
-          } else {
-            // Normal flow for salon users
-            const res = await fetch(`/api/salons?email=${encodeURIComponent(firebaseUser.email)}`);
-            if (!res.ok) throw new Error("Salon nicht gefunden.");
-            const data = await res.json();
-            const salonData = data.salon ?? data;
-            setSalon(salonData);
-            setSalonName(salonData.name);
-            setSalonDescription(salonData.description ?? "");
-            setSalonLocation(salonData.location ?? "");
-            setGoogleMapsAddress(salonData.googleMapsAddress ?? "");
-            setSalonContact(salonData.contact ?? "");
-            setImagePreviews(
-              salonData.imageUrls || salonData.imageUrl
-                ? (salonData.imageUrls ?? [salonData.imageUrl]).filter(Boolean)
-                : []
-            );
-            setImageFiles([]);
-            setWorkingDays(salonData.workingDays ?? Object.fromEntries(WEEKDAYS.map(day => [day, { open: day !== "Sonntag", start: "09:00", end: "18:00" }])));
-            setHolidays(salonData.holidays ?? []);
+          } catch (err) {
+            setStatus("Fehler beim Laden des Salons.");
+          } finally {
+            setLoading(false);
           }
-        } catch (err) {
-          setStatus("Fehler beim Laden des Salons.");
-        } finally {
+        } else {
           setLoading(false);
         }
-      } else {
-        setLoading(false);
+      } catch {
+        window.location.href = '/login';
       }
-    });
-    return () => unsubscribe();
+    };
+    init();
   }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,19 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import { getAuth, signOut } from "firebase/auth";
-import { initializeApp } from "firebase/app";
-
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 const COLORS = {
   primary: "#5C6F68",
@@ -86,18 +71,10 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
 
   const handleLogout = async () => {
     try {
-      // Sign out from Firebase
-      await signOut(auth);
-
-      // Clear localStorage
+      await fetch("/api/auth/logout", { method: "POST" });
       localStorage.removeItem("bookme_user");
-
-      // Call the onLogout prop if provided
-      if (onLogout) {
-        onLogout();
-      }
-
-      // Redirect to login page
+      localStorage.removeItem("userEmail");
+      if (onLogout) onLogout();
       window.location.href = "/login";
     } catch (error) {
       console.error("Logout error:", error);

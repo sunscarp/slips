@@ -1,8 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { initializeApp } from "firebase/app";
-import { FirebaseError } from "firebase/app";
+
 
 const COLORS = {
   primary: "#5C6F68",
@@ -11,19 +9,7 @@ const COLORS = {
   highlight: "#9DBE8D",
 };
 
-// Firebase configuration (use actual values, not process.env)
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 export default function AdminDashboard() {
   const [salonName, setSalonName] = useState("");
@@ -241,23 +227,21 @@ export default function AdminDashboard() {
       return;
     }
     try {
-      // 1. Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, salonEmail, salonPassword);
-      const user = userCredential.user;
-
-      // 2. Store user in MongoDB via /api/register
-      const userData = {
-        uid: user.uid,
-        email: user.email,
-        role: "salon",
-        createdAt: new Date().toISOString(),
-      };
+      // 1. Create user in MongoDB via /api/register
       const userRes = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userData),
+        body: JSON.stringify({
+          email: salonEmail,
+          password: salonPassword,
+          role: "salon",
+          createdAt: new Date().toISOString(),
+        }),
       });
       if (!userRes.ok) {
+        if (userRes.status === 409) {
+          throw new Error("Ein Benutzer mit dieser E-Mail existiert bereits.");
+        }
         if (userRes.status === 404) {
           throw new Error("API endpoint /api/register nicht gefunden.");
         }
@@ -265,7 +249,7 @@ export default function AdminDashboard() {
         throw new Error(errMsg || "Fehler beim Erstellen des Benutzers.");
       }
 
-      // 3. Create salon in /api/salons with default founders plan
+      // 2. Create salon in /api/salons with default founders plan
       const salonRes = await fetch("/api/salons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -287,25 +271,11 @@ export default function AdminDashboard() {
       setSalonPassword("");
     } catch (err: any) {
       let msg = "Fehler beim Erstellen des Salon-Benutzers.";
-      if (err instanceof FirebaseError) {
-        switch (err.code) {
-          case "auth/email-already-in-use":
-            msg = "Ein Benutzer mit dieser E-Mail existiert bereits.";
-            break;
-          case "auth/invalid-email":
-            msg = "Ungültige E-Mail-Adresse.";
-            break;
-          case "auth/weak-password":
-            msg = "Das Passwort ist zu schwach.";
-            break;
-          default:
-            msg += ` (Firebase: ${err.message})`;
-        }
-      } else if (err?.message?.includes("Salon already exists")) {
+      if (err?.message?.includes("Salon already exists")) {
         // Treat as success if salon already exists
         msg = "Salon-Benutzer erfolgreich erstellt.";
       } else if (err?.message) {
-        msg += ` (${err.message})`;
+        msg = err.message;
       }
       setCreateStatus(msg);
     }

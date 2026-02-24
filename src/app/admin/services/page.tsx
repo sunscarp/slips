@@ -1,8 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { FiEdit2, FiTrash2, FiPlus, FiScissors } from "react-icons/fi";
-import { getAuth, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { initializeApp } from "firebase/app";
 import Navbar from "@/components/adminnavbar";
 import Footer from "@/components/footer";
 
@@ -212,27 +210,7 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
 }
 
 // --- Main Page Component ---
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
 type User = { uid: string; [key: string]: any };
-
-// Fetch user from users collection using Firebase Auth UID
-async function fetchUserByUid(uid: string): Promise<User | null> {
-  const res = await fetch(`/api/register?uid=${uid}`);
-  if (!res.ok) return null;
-  const user = await res.json();
-  return user && user.uid ? user : null;
-}
 
 // Helper to get price range for a salon's services
 function getPriceRangeForUid(services: any[], uid: string) {
@@ -282,68 +260,74 @@ export default function ServicesPage() {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser?.uid) {
-        // Check if this is system admin viewing another salon's services
-        const urlParams = new URLSearchParams(window.location.search);
-        const salonUidParam = urlParams.get('salonUid');
-        const isSystemUser = firebaseUser.email === "system@gmail.com";
-        setIsSystemAdmin(isSystemUser);
-        
-        if (salonUidParam && isSystemUser) {
-          // System admin viewing specific salon services
-          setViewingSalonUid(salonUidParam);
-          
-          // Fetch the specific salon data
-          try {
-            const salonRes = await fetch(`/api/salons?uid=${encodeURIComponent(salonUidParam)}`);
-            if (salonRes.ok) {
-              const salonData = await salonRes.json();
-              setSalon(salonData.salon);
-              setEmployees(
-                (salonData.salon.employees ?? []).map((emp: any) => ({
-                  ...emp,
-                  holidays: emp.holidays ?? [],
-                  services: emp.services ?? []
-                }))
-              );
-              
-              // Set a mock user with the salon UID for service operations
-              setUser({ uid: salonUidParam, email: firebaseUser.email });
-            }
-          } catch (err) {
-            console.error('Failed to fetch salon data:', err);
-          }
-        } else {
-          // Normal flow for salon users
-          const userDoc = await fetchUserByUid(firebaseUser.uid);
-          setUser(userDoc);
-          
-          if (firebaseUser.email) {
+    const init = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) { window.location.href = '/login'; return; }
+        const currentUser = await res.json();
+        if (currentUser?.uid) {
+          // Check if this is system admin viewing another salon's services
+          const urlParams = new URLSearchParams(window.location.search);
+          const salonUidParam = urlParams.get('salonUid');
+          const isSystemUser = currentUser.email === "system@gmail.com";
+          setIsSystemAdmin(isSystemUser);
+
+          if (salonUidParam && isSystemUser) {
+            // System admin viewing specific salon services
+            setViewingSalonUid(salonUidParam);
+
+            // Fetch the specific salon data
             try {
-              const res = await fetch(`/api/salons?email=${encodeURIComponent(firebaseUser.email)}`);
-              if (res.ok) {
-                const data = await res.json();
-                const salonData = data.salon ?? data;
-                setSalon(salonData);
+              const salonRes = await fetch(`/api/salons?uid=${encodeURIComponent(salonUidParam)}`);
+              if (salonRes.ok) {
+                const salonData = await salonRes.json();
+                setSalon(salonData.salon);
                 setEmployees(
-                  (salonData.employees ?? []).map((emp: any) => ({
+                  (salonData.salon.employees ?? []).map((emp: any) => ({
                     ...emp,
                     holidays: emp.holidays ?? [],
                     services: emp.services ?? []
                   }))
                 );
+
+                // Set a mock user with the salon UID for service operations
+                setUser({ uid: salonUidParam, email: currentUser.email });
               }
             } catch (err) {
               console.error('Failed to fetch salon data:', err);
             }
+          } else {
+            // Normal flow for salon users
+            setUser(currentUser);
+
+            if (currentUser.email) {
+              try {
+                const salonRes = await fetch(`/api/salons?email=${encodeURIComponent(currentUser.email)}`);
+                if (salonRes.ok) {
+                  const data = await salonRes.json();
+                  const salonData = data.salon ?? data;
+                  setSalon(salonData);
+                  setEmployees(
+                    (salonData.employees ?? []).map((emp: any) => ({
+                      ...emp,
+                      holidays: emp.holidays ?? [],
+                      services: emp.services ?? []
+                    }))
+                  );
+                }
+              } catch (err) {
+                console.error('Failed to fetch salon data:', err);
+              }
+            }
           }
+        } else {
+          window.location.href = '/login';
         }
-      } else {
-        setUser(null);
+      } catch {
+        window.location.href = '/login';
       }
-    });
-    return () => unsubscribe();
+    };
+    init();
   }, []);
 
   async function fetchServices() {

@@ -2,20 +2,6 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { initializeApp } from "firebase/app";
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 type CalendarBooking = {
   id: string;
@@ -53,84 +39,91 @@ export default function CalendarPage() {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser?.email) {
-        setLoading(true);
-        try {
-          // Fetch plans first
-          await fetchPlans();
-          
-          // Check if this is system admin viewing another salon's calendar
-          const urlParams = new URLSearchParams(window.location.search);
-          const salonUidParam = urlParams.get('salonUid');
-          const isSystemUser = firebaseUser.email === "system@gmail.com";
-          setIsSystemAdmin(isSystemUser);
+    const init = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) { window.location.href = '/login'; return; }
+        const currentUser = await res.json();
+        setUser(currentUser);
+        if (currentUser?.email) {
+          setLoading(true);
+          try {
+            // Fetch plans first
+            await fetchPlans();
 
-          let salonUid = null;
-          if (salonUidParam && isSystemUser) {
-            setViewingSalonUid(salonUidParam);
-            salonUid = salonUidParam;
-            // Fetch the specific salon data
-            const salonRes = await fetch(`/api/salons?uid=${encodeURIComponent(salonUidParam)}`);
-            if (salonRes.ok) {
-              const salonData = await salonRes.json();
-              setSalon(salonData.salon);
-            }
-          } else {
-            // Normal salon user or system admin viewing their own calendar
-            const res = await fetch(`/api/salons?email=${encodeURIComponent(firebaseUser.email)}`);
-            if (!res.ok) throw new Error("Salon not found");
-            const data = await res.json();
-            const salonData = data.salon || data;
-            setSalon(salonData);
-            salonUid = salonData?.uid;
-          }
+            // Check if this is system admin viewing another salon's calendar
+            const urlParams = new URLSearchParams(window.location.search);
+            const salonUidParam = urlParams.get('salonUid');
+            const isSystemUser = currentUser.email === "system@gmail.com";
+            setIsSystemAdmin(isSystemUser);
 
-          if (salonUid) {
-            // Fetch all bookings for this salon
-            const res = await fetch(`/api/bookings?salonUid=${encodeURIComponent(salonUid)}`);
-            const data = await res.json();
-            if (data.bookings) {
-              const allCalendarBookings = data.bookings.map((booking: any) => {
-                const startTime = booking.time;
-                const duration = booking.services.reduce((total: number, service: any) => total + (service.duration || 30), 0);
-                const [hours, minutes] = startTime.split(':').map(Number);
-                const endMinutes = hours * 60 + minutes + duration;
-                const endHours = Math.floor(endMinutes / 60);
-                const endMins = endMinutes % 60;
-                const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
-                const employeeNames = Array.from(
-                  new Set(
-                    (booking.services || [])
-                      .map((s: any) => s.employee)
-                      .filter(Boolean)
-                  )
-                ).join(', ');
-                return {
-                  id: booking._id,
-                  time: startTime,
-                  endTime: endTime,
-                  service: booking.services.map((s: any) => s.name).join(', '),
-                  customer: booking.customerName,
-                  status: booking.status === 'confirmed' ? 'upcoming' : booking.status,
-                  date: booking.date,
-                  employee: employeeNames
-                };
-              });
-              setCalendarBookings(allCalendarBookings);
+            let salonUid = null;
+            if (salonUidParam && isSystemUser) {
+              setViewingSalonUid(salonUidParam);
+              salonUid = salonUidParam;
+              // Fetch the specific salon data
+              const salonRes = await fetch(`/api/salons?uid=${encodeURIComponent(salonUidParam)}`);
+              if (salonRes.ok) {
+                const salonData = await salonRes.json();
+                setSalon(salonData.salon);
+              }
+            } else {
+              // Normal salon user or system admin viewing their own calendar
+              const salonRes = await fetch(`/api/salons?email=${encodeURIComponent(currentUser.email)}`);
+              if (!salonRes.ok) throw new Error("Salon not found");
+              const data = await salonRes.json();
+              const salonData = data.salon || data;
+              setSalon(salonData);
+              salonUid = salonData?.uid;
             }
+
+            if (salonUid) {
+              // Fetch all bookings for this salon
+              const bookRes = await fetch(`/api/bookings?salonUid=${encodeURIComponent(salonUid)}`);
+              const bookData = await bookRes.json();
+              if (bookData.bookings) {
+                const allCalendarBookings = bookData.bookings.map((booking: any) => {
+                  const startTime = booking.time;
+                  const duration = booking.services.reduce((total: number, service: any) => total + (service.duration || 30), 0);
+                  const [hours, minutes] = startTime.split(':').map(Number);
+                  const endMinutes = hours * 60 + minutes + duration;
+                  const endHours = Math.floor(endMinutes / 60);
+                  const endMins = endMinutes % 60;
+                  const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+                  const employeeNames = Array.from(
+                    new Set(
+                      (booking.services || [])
+                        .map((s: any) => s.employee)
+                        .filter(Boolean)
+                    )
+                  ).join(', ');
+                  return {
+                    id: booking._id,
+                    time: startTime,
+                    endTime: endTime,
+                    service: booking.services.map((s: any) => s.name).join(', '),
+                    customer: booking.customerName,
+                    status: booking.status === 'confirmed' ? 'upcoming' : booking.status,
+                    date: booking.date,
+                    employee: employeeNames
+                  };
+                });
+                setCalendarBookings(allCalendarBookings);
+              }
+            }
+          } catch (err) {
+            setCalendarBookings([]);
+          } finally {
+            setLoading(false);
           }
-        } catch (err) {
-          setCalendarBookings([]);
-        } finally {
+        } else {
           setLoading(false);
         }
-      } else {
-        setLoading(false);
+      } catch {
+        window.location.href = '/login';
       }
-    });
-    return () => unsubscribe();
+    };
+    init();
   }, []);
 
   const handleDateClick = (date: string) => {

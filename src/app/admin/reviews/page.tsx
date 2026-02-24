@@ -1,12 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { initializeApp } from "firebase/app";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
 import { FiMessageSquare, FiStar, FiAward, FiUser, FiTrash2 } from "react-icons/fi";
 
-// Constants
 const COLORS = {
   primary: "#5C6F68",
   accent: "#E4DED5",
@@ -17,18 +14,6 @@ const COLORS = {
   warning: "#FF9800",
   error: "#F44336",
 };
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 // Types
 type Review = {
@@ -79,69 +64,65 @@ export default function ReviewsPage() {
 
   // Get current user and fetch salon info
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser?.email) {
-        setLoading(true);
-        try {
-          // Check if this is system admin viewing another salon's reviews
-          const urlParams = new URLSearchParams(window.location.search);
-          const salonUidParam = urlParams.get('salonUid');
-          const isSystemUser = firebaseUser.email === "system@gmail.com";
-          setIsSystemAdmin(isSystemUser);
-          
-          if (salonUidParam && isSystemUser) {
-            // System admin viewing specific salon reviews
-            setViewingSalonUid(salonUidParam);
-            setUserRole("system");
-            
-            // Fetch the specific salon data
-            const salonRes = await fetch(`/api/salons?uid=${encodeURIComponent(salonUidParam)}`);
-            if (salonRes.ok) {
-              const salonData = await salonRes.json();
-              setSalon(salonData.salon);
-              
-              if (salonData.salon?.uid) {
-                await fetchReviews(salonData.salon.uid);
+    const init = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) { window.location.href = '/login'; return; }
+        const currentUser = await res.json();
+        setUser(currentUser);
+        if (currentUser?.email) {
+          setLoading(true);
+          try {
+            // Check if this is system admin viewing another salon's reviews
+            const urlParams = new URLSearchParams(window.location.search);
+            const salonUidParam = urlParams.get('salonUid');
+            const isSystemUser = currentUser.email === "system@gmail.com";
+            setIsSystemAdmin(isSystemUser);
+
+            if (salonUidParam && isSystemUser) {
+              // System admin viewing specific salon reviews
+              setViewingSalonUid(salonUidParam);
+              setUserRole("system");
+
+              // Fetch the specific salon data
+              const salonRes = await fetch(`/api/salons?uid=${encodeURIComponent(salonUidParam)}`);
+              if (salonRes.ok) {
+                const salonData = await salonRes.json();
+                setSalon(salonData.salon);
+
+                if (salonData.salon?.uid) {
+                  await fetchReviews(salonData.salon.uid);
+                }
+              }
+            } else {
+              // Normal salon user
+              setUserRole(currentUser.role ?? null);
+
+              // Fetch salon info
+              const salonRes = await fetch(`/api/salons?email=${encodeURIComponent(currentUser.email)}`);
+              if (!salonRes.ok) throw new Error("Salon not found");
+              const data = await salonRes.json();
+
+              const salonData = data.salon || data;
+              setSalon(salonData);
+
+              if (salonData?.uid) {
+                await fetchReviews(salonData.uid);
               }
             }
-          } else {
-            // Normal salon user
-            // Fetch user role
-            const userRes = await fetch(`/api/users?email=${encodeURIComponent(firebaseUser.email)}`);
-            if (userRes.ok) {
-              const userData = await userRes.json();
-              const role = typeof userData.role === "string"
-                ? userData.role.trim().toLowerCase()
-                : null;
-              setUserRole(role);
-            } else {
-              setUserRole(null);
-            }
-            
-            // Fetch salon info
-            const res = await fetch(`/api/salons?email=${encodeURIComponent(firebaseUser.email)}`);
-            if (!res.ok) throw new Error("Salon not found");
-            const data = await res.json();
-            
-            const salonData = data.salon || data;
-            setSalon(salonData);
-            
-            if (salonData?.uid) {
-              await fetchReviews(salonData.uid);
-            }
+          } catch (err) {
+            console.error("Error fetching salon data:", err);
+          } finally {
+            setLoading(false);
           }
-          
-        } catch (err) {
-          console.error("Error fetching salon data:", err);
-        } finally {
+        } else {
           setLoading(false);
         }
-      } else {
-        setLoading(false);
+      } catch {
+        window.location.href = '/login';
       }
-    });
-    return () => unsubscribe();
+    };
+    init();
   }, []);
 
   const fetchReviews = async (salonUid: string) => {

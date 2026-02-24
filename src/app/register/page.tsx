@@ -1,22 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { initializeApp } from "firebase/app";
-import { FirebaseError } from "firebase/app";
-
-// Firebase configuration (use actual values, not process.env)
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 const COLORS = {
   primary: "#5C6F68",
@@ -55,57 +38,37 @@ export default function RegisterPage() {
 
     try {
       setLoading(true);
-      
-      // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Prepare user data for MongoDB
-      const userData = {
-        uid: user.uid,
-        email: user.email,
-        name: name.trim(), // Add name to user data
-        createdAt: new Date().toISOString(),
-      };
 
-      // Store user in MongoDB
       const response = await fetch('/api/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.toLowerCase().trim(),
+          password,
+          name: name.trim(),
+          createdAt: new Date().toISOString(),
+        }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to store user data');
+        if (response.status === 409) {
+          setError('Diese E-Mail wird bereits verwendet.');
+        } else {
+          setError(data.error || 'Registrierung fehlgeschlagen.');
+        }
+        return;
       }
 
-      // Save user state to localStorage (auto-login)
-      localStorage.setItem("bookme_user", JSON.stringify(user));
-
-      // Redirect or show success message
-      window.location.href = '/'; // Or use Next.js router
+      // Redirect to login after successful registration
+      window.location.href = '/login';
 
     } catch (err) {
-      if (err instanceof FirebaseError) {
-        switch (err.code) {
-          case 'auth/email-already-in-use':
-            setError('Email already in use');
-            break;
-          case 'auth/invalid-email':
-            setError('Invalid email address');
-            break;
-          case 'auth/weak-password':
-            setError('Password is too weak');
-            break;
-          default:
-            setError('Registration failed. Please try again.');
-        }
-      } else if (err instanceof Error) {
+      if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('An unknown error occurred');
+        setError('Ein unbekannter Fehler ist aufgetreten.');
       }
     } finally {
       setLoading(false);

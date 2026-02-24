@@ -1,22 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { initializeApp } from "firebase/app";
-import { FirebaseError } from "firebase/app";
 import { useRouter } from "next/navigation";
-
-// Firebase configuration (use env variables)
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 const COLORS = {
   primary: "#5C6F68",
@@ -37,26 +21,24 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Login fehlgeschlagen.");
+        return;
+      }
 
-      // Fetch user data from your API to check role
-      const res = await fetch(`/api/register?uid=${user.uid}`);
-      if (!res.ok) throw new Error("Fehler beim Abrufen der Benutzerdaten.");
-      const userData = await res.json();
+      localStorage.setItem("userEmail", data.email ?? "");
 
-      if (userData && userData.role === "admin") {
-        localStorage.setItem("userEmail", user.email ?? "");
+      if (data.role === "admin") {
         window.location.href = "/system/admin";
-      } else if (userData && userData.role === "salon") {
-        localStorage.setItem("userEmail", user.email ?? "");
+      } else if (data.role === "salon") {
         window.location.href = "/admin/dashboard";
       } else {
-        // Save user state to localStorage
-        localStorage.setItem("bookme_user", JSON.stringify(user));
-        localStorage.setItem("userEmail", user.email ?? "");
-        
-        // Check for redirect URL
         const redirectUrl = localStorage.getItem("bookme_redirect_after_login");
         if (redirectUrl) {
           localStorage.removeItem("bookme_redirect_after_login");
@@ -66,25 +48,7 @@ export default function LoginPage() {
         }
       }
     } catch (err) {
-      if (err instanceof FirebaseError) {
-        switch (err.code) {
-          case "auth/user-not-found":
-            setError("Kein Benutzer mit dieser E-Mail gefunden.");
-            break;
-          case "auth/wrong-password":
-            setError("Falsches Passwort.");
-            break;
-          case "auth/invalid-email":
-            setError("Ungültige E-Mail-Adresse.");
-            break;
-          default:
-            setError("Login fehlgeschlagen. Bitte erneut versuchen.");
-        }
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Ein unbekannter Fehler ist aufgetreten.");
-      }
+      setError("Ein unbekannter Fehler ist aufgetreten.");
     } finally {
       setLoading(false);
     }

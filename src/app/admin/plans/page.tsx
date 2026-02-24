@@ -1,21 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { initializeApp } from "firebase/app";
 import Navbar from "../../../components/adminnavbar";
-
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 export default function PlansPage() {
 	const [user, setUser] = useState<any>(null);
@@ -24,19 +9,26 @@ export default function PlansPage() {
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-			setUser(firebaseUser);
-			if (firebaseUser?.email) {
-				try {
-					// Fetch salon info to get current plan
-					const salonRes = await fetch(`/api/salons?email=${encodeURIComponent(firebaseUser.email)}`);
-					if (salonRes.ok) {
-						const salonData = await salonRes.json();
-						setSalon(salonData.salon || salonData);
+		const init = async () => {
+			try {
+				const res = await fetch('/api/auth/me');
+				if (!res.ok) { window.location.href = '/login'; return; }
+				const currentUser = await res.json();
+				setUser(currentUser);
+				if (currentUser?.email) {
+					try {
+						// Fetch salon info to get current plan
+						const salonRes = await fetch(`/api/salons?email=${encodeURIComponent(currentUser.email)}`);
+						if (salonRes.ok) {
+							const salonData = await salonRes.json();
+							setSalon(salonData.salon || salonData);
+						}
+					} catch (err) {
+						console.error("Error fetching salon data:", err);
 					}
-				} catch (err) {
-					console.error("Error fetching salon data:", err);
 				}
+			} catch {
+				window.location.href = '/login';
 			}
 			
 			// Fetch plans from API
@@ -51,8 +43,8 @@ export default function PlansPage() {
 			}
 			
 			setLoading(false);
-		});
-		return () => unsubscribe();
+		};
+		init();
 	}, []);
 
 	const handlePlanSelect = async (planId: string) => {
