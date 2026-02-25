@@ -18,7 +18,7 @@ function ServiceStatCard({ count }: { count: number }) {
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm flex items-center justify-between font-inter">
       <div>
-        <p className="text-sm font-medium text-black">Gesamt Dienstleistungen</p>
+        <p className="text-sm font-medium text-black">Gesamt Produkte</p>
         <p className="mt-1 text-2xl font-semibold text-black">{count}</p>
       </div>
       <div className="p-3 rounded-full bg-primary-50 text-primary-600">
@@ -35,18 +35,16 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
       ? {
           ...initial,
           serviceType: initial.serviceType || "",
+          price: initial.price || 0,
+          imageUrl: initial.imageUrl || "",
         }
       : {
           name: "",
           description: "",
           serviceType: "",
+          price: 0,
           imageUrl: "",
         }
-  );
-  
-  // Multiple duration/price combinations
-  const [durationPrices, setDurationPrices] = useState(
-    initial?.durationPrices || [{ duration: 30, price: 0 }]
   );
 
   function handleChange(e: any) {
@@ -54,46 +52,46 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
     setForm((f: any) => ({ ...f, [name]: value }));
   }
 
-  const addDurationPrice = () => {
-    setDurationPrices([...durationPrices, { duration: 30, price: 0 }]);
-  };
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  const removeDurationPrice = (index: number) => {
-    if (durationPrices.length > 1) {
-      setDurationPrices(durationPrices.filter((_: { duration: number; price: number }, i: number) => i !== index));
-    }
-  };
-
-  const updateDurationPrice = (index: number, field: 'duration' | 'price', value: number) => {
-    const updated = [...durationPrices];
-    updated[index] = { ...updated[index], [field]: value };
-    setDurationPrices(updated);
+  const handleImageChange = (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm((f: any) => ({ ...f, imageUrl: String(reader.result) }));
+    };
+    reader.readAsDataURL(file);
   };
 
   async function handleSubmit(e: any) {
     e.preventDefault();
-    
-    // Validate duration/price combinations
-    const validDurationPrices = durationPrices.filter((dp: { duration: number; price: number }) => dp.duration > 0 && dp.price > 0);
-    if (validDurationPrices.length === 0) {
-      alert("Bitte geben Sie mindestens eine gültige Dauer und Preis Kombination ein.");
+    const price = Number(form.price || 0);
+    if (!form.name || price <= 0) {
+      alert("Bitte geben Sie einen Namen und einen gültigen Preis an.");
       return;
     }
-
+    if (!form.imageUrl) {
+      alert("Bitte fügen Sie ein Bild für das Produkt hinzu (erforderlich).");
+      return;
+    }
     await onSave({
       ...form,
-      durationPrices: validDurationPrices,
+      price,
     });
   }
 
   // Service types for dropdown
   const serviceTypes = [
-    "Massage",
-    "Hair", 
-    "Hair Removal",
-    "Nails",
-    "Face",
-    "Body",
+    "socks",
+    "shoes",
+    "bras",
+    "tights",
+    "bikinis",
+    "miscellaneous",
+    "swimwear",
+    "sportswear",
+    "panties",
   ];
 
   return (
@@ -102,7 +100,7 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
       className="bg-white p-6 rounded-lg shadow-sm space-y-4 mb-8 font-inter"
     >
       <h2 className="text-xl font-semibold text-black mb-2">
-        {initial ? "Dienstleistung bearbeiten" : "Neue Dienstleistung hinzufügen"}
+        {initial ? "Produkt bearbeiten" : "Neues Produkt hinzufügen"}
       </h2>
       {/* Service Type Dropdown */}
       <div>
@@ -140,52 +138,36 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
         />
       </div>
       
-      {/* Duration/Price Combinations */}
+      {/* Price and Image for product */}
       <div>
-        <label className="block text-sm font-medium text-black mb-2">Dauer & Preis Optionen*</label>
-        {durationPrices.map((dp: { duration: number; price: number }, index: number) => (
-          <div key={index} className="flex gap-4 items-center mb-3 p-3 bg-gray-50 rounded-lg">
-            <div className="flex-1">
-              <label className="block text-xs text-gray-600 mb-1">Dauer (Minuten)</label>
-              <input
-                type="number"
-                min="15"
-                step="15"
-                value={dp.duration}
-                onChange={e => updateDurationPrice(index, 'duration', Number(e.target.value))}
-                className="input input-bordered w-full font-inter text-black border-gray-200 rounded-md bg-white shadow-sm py-1 text-sm px-3"
-                required
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs text-gray-600 mb-1">Preis (€)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.50"
-                value={dp.price}
-                onChange={e => updateDurationPrice(index, 'price', Number(e.target.value))}
-                className="input input-bordered w-full font-inter text-black border-gray-200 rounded-md bg-white shadow-sm py-1 text-sm px-3"
-                required
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => removeDurationPrice(index)}
-              disabled={durationPrices.length === 1}
-              className="text-red-500 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed mt-4"
-            >
-              ×
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={addDurationPrice}
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-        >
-          + Weitere Option hinzufügen
-        </button>
+        <label className="block text-sm font-medium text-black mb-2">Preis (€)*</label>
+        <input
+          name="price"
+          type="number"
+          min="0"
+          step="0.50"
+          value={form.price}
+          onChange={handleChange}
+          required
+          className="input input-bordered w-full mt-1 font-inter text-black border-gray-200 border-2 rounded-lg bg-gray-50 shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all duration-200 py-2 text-base px-4"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-black mb-2">Produktbild*</label>
+        <div className="flex items-center gap-3">
+          <input type="file" accept="image/*" onChange={handleImageChange} ref={(el) => fileInputRef.current = el as HTMLInputElement | null} className="hidden" />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-2 bg-white border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-50"
+          >
+            <FiPlus /> Bild hinzufügen
+          </button>
+          {form.imageUrl && (
+            <img src={form.imageUrl} alt="preview" className="mt-2 h-24 w-24 object-cover rounded" />
+          )}
+        </div>
       </div>
 
       <div className="flex gap-2 mt-2">
@@ -217,12 +199,8 @@ function getPriceRangeForUid(services: any[], uid: string) {
   const salonServices = services.filter((s) => s.uid === uid);
   const allPrices: number[] = [];
   salonServices.forEach((service) => {
-    if (service.durationPrices && Array.isArray(service.durationPrices)) {
-      service.durationPrices.forEach((dp: any) => {
-        if (dp.price && !isNaN(Number(dp.price))) {
-          allPrices.push(Number(dp.price));
-        }
-      });
+    if (service.price && !isNaN(Number(service.price))) {
+      allPrices.push(Number(service.price));
     }
   });
   if (allPrices.length === 0) return null;
@@ -424,15 +402,18 @@ export default function ServicesPage() {
     setExpandedEmployeeIdx(expandedEmployeeIdx === idx ? null : idx);
   };
 
-  // Service types for dropdown
+  // Product types for dropdown
   const serviceTypes = [
     "All",
-    "Massage",
-    "Hair",
-    "Hair Removal",
-    "Nails",
-    "Face",
-    "Body",
+    "socks",
+    "shoes",
+    "bras",
+    "tights",
+    "bikinis",
+    "miscellaneous",
+    "swimwear",
+    "sportswear",
+    "panties",
   ];
 
   // Filter services by selected type
@@ -454,14 +435,14 @@ export default function ServicesPage() {
         <div className="max-w-7xl mx-auto py-8 px-2 sm:px-4 lg:px-8">
           {/* Header */}
           <div className="mb-8 text-center">
-            <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 font-inter">
-              Dienstleistungen verwalten
+                <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 font-inter">
+              Produkte verwalten
               {viewingSalonUid && isSystemAdmin && (
                 <span className="text-lg text-gray-600 block mt-1">(System-Ansicht für {salon?.name})</span>
               )}
             </h1>
             <p className="text-black text-base sm:text-lg font-inter">
-              Fügen Sie Dienstleistungen hinzu, bearbeiten oder entfernen Sie sie aus Ihrem Salonangebot.
+              Fügen Sie Produkte hinzu, bearbeiten oder entfernen Sie sie aus Ihrem Sortiment.
             </p>
           </div>
           {/* Stats Grid */}
@@ -491,7 +472,7 @@ export default function ServicesPage() {
                   style={{ marginLeft: 2, textAlign: "left" }}
                 >
                   <span className="inline-flex items-center justify-center w-8 h-8 rounded bg-primary-600 text-white font-bold">M</span>
-                  <span style={{ marginLeft: 0 }}>Mitarbeiter-Dienstleistungszuordnung</span>
+                  <span style={{ marginLeft: 0 }}>Mitarbeiter-Produktzuordnung</span>
                 </h3>
                 {employees.map((emp, idx) => (
                   <div key={idx} className="mb-4 border rounded-lg p-4 bg-gray-50 shadow-sm">
@@ -502,14 +483,14 @@ export default function ServicesPage() {
                           <span className="ml-2 text-xs text-black font-inter">({emp.email})</span>
                         )}
                         <span className="ml-2 text-xs text-gray-600 font-inter">
-                          ({emp.services?.length || 0} Dienstleistungen zugeordnet)
+                          ({emp.services?.length || 0} Produkte zugeordnet)
                         </span>
                       </div>
                       <button
                         type="button"
                         className="text-xs px-3 py-1 rounded-md border border-gray-300 bg-white shadow-sm font-inter text-black"
                       >
-                        {expandedEmployeeIdx === idx ? "Schließen" : "Dienstleistungen verwalten"}
+                        {expandedEmployeeIdx === idx ? "Schließen" : "Produkte verwalten"}
                       </button>
                     </div>
                     {expandedEmployeeIdx === idx && (
@@ -532,10 +513,10 @@ export default function ServicesPage() {
                                 <div className="flex-1">
                                   <span className="select-none font-medium">{service.name}</span>
                                   <div className="text-xs text-gray-600">
-                                    {service.durationPrices && service.durationPrices.length > 0 
-                                      ? `${service.durationPrices.map((dp: any) => `${dp.duration}min: €${dp.price}`).join(', ')}`
-                                      : 'Keine Preise verfügbar'
-                                    }
+                                    {service.price !== undefined && service.price !== null
+                                        ? `€${service.price}`
+                                        : 'Keine Preisinformation'
+                                      }
                                   </div>
                                 </div>
                               </label>
@@ -555,7 +536,7 @@ export default function ServicesPage() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2 sm:gap-0">
                 <div className="flex w-full items-center justify-between">
                   <h2 className="text-xl font-semibold text-black flex items-center font-inter">
-                    <FiScissors className="mr-2" /> Ihre Dienstleistungen
+                    <FiScissors className="mr-2" /> Ihre Produkte
                   </h2>
                   {/* On mobile, button on right side of heading */}
                   <div className="flex-shrink-0 ml-2 sm:ml-0">
@@ -576,8 +557,8 @@ export default function ServicesPage() {
                         }, 100);
                       }}
                       disabled={!user?.uid}
-                      aria-label="Neue Dienstleistung hinzufügen"
-                      title="Neue Dienstleistung hinzufügen"
+                      aria-label="Neues Produkt hinzufügen"
+                      title="Neues Produkt hinzufügen"
                     >
                       <FiPlus size={22} color="white" />
                     </button>
@@ -599,8 +580,8 @@ export default function ServicesPage() {
               </div>
               {/* Price Range */}
               {user?.uid && (
-                <div className="mb-4">
-                  <div className="font-bold text-black mb-2">Ihr Dienstleistungspreisbereich:</div>
+                  <div className="mb-4">
+                  <div className="font-bold text-black mb-2">Ihr Produktpreisbereich:</div>
                   <div className="text-black font-inter">
                     {getPriceRangeForUid(services, user.uid) || "Keine Preisinformation"}
                   </div>
@@ -610,7 +591,7 @@ export default function ServicesPage() {
               <div className="grid grid-cols-1 gap-6">
                 {filteredServices.length === 0 && (
                   <div className="col-span-full text-center text-black py-8 bg-white rounded-lg shadow-sm font-inter">
-                    Keine Dienstleistungen gefunden. Klicken Sie auf <span className="inline-flex items-center gap-1 font-semibold"><FiPlus /> Hinzufügen</span>, um eine zu erstellen.
+                    Keine Produkte gefunden. Klicken Sie auf <span className="inline-flex items-center gap-1 font-semibold"><FiPlus /> Hinzufügen</span>, um eines zu erstellen.
                   </div>
                 )}
                 {filteredServices.map((s) => (
@@ -633,16 +614,14 @@ export default function ServicesPage() {
                           {s.description}
                         </div>
                         <div className="flex flex-wrap gap-2 mt-1 text-xs sm:text-sm font-inter text-black">
-                          {s.durationPrices && s.durationPrices.length > 0 ? (
+                          {s.price !== undefined && s.price !== null ? (
                             <span className="text-black">
-                              {s.durationPrices.map((dp: any, i: number) => (
-                                <span key={i} className="inline-block mr-3 px-2 py-1 bg-gray-100 rounded font-mono text-xs sm:text-sm text-black border border-gray-200">
-                                  {dp.duration}min: <span className="text-green-700">€{dp.price}</span>
-                                </span>
-                              ))}
+                              <span className="inline-block mr-3 px-2 py-1 bg-gray-100 rounded font-mono text-xs sm:text-sm text-black border border-gray-200">
+                                <span className="text-green-700">€{s.price}</span>
+                              </span>
                             </span>
                           ) : (
-                            <span className="text-gray-400 font-medium">Keine Preise verfügbar</span>
+                            <span className="text-gray-400 font-medium">Keine Preisinformation</span>
                           )}
                         </div>
                       </div>
@@ -650,7 +629,7 @@ export default function ServicesPage() {
                         {deleteId === s._id ? (
                           <div className="flex flex-col gap-2 items-end bg-gray-50 border border-gray-200 rounded-lg p-3 shadow-sm">
                             <div className="mb-1 text-black font-inter text-xs text-right">
-                              <span className="font-semibold text-red-600">Dienstleistung löschen?</span>
+                              <span className="font-semibold text-red-600">Produkt löschen?</span>
                               <br />
                               <span className="text-gray-500">Diese Aktion kann nicht rückgängig gemacht werden.</span>
                             </div>

@@ -7,7 +7,7 @@ const dbName = process.env.MONGODB_DB;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { salonId, salonUid, customerUid, services, date, time, total, customerName, customerPhone, customerAddress, status = 'confirmed' } = body;
+    const { salonId, salonUid, customerUid, services, date, time, total, customerName, customerPhone, customerGender, status = 'confirmed' } = body;
 
     // Validation
     if (!salonId || !salonUid || !customerUid || !services || !date || !time || total === undefined || !customerName || !customerPhone) {
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       total: Number(total),
       customerName,
       customerPhone,
-      customerAddress: customerAddress || null, // Store customer address if provided
+      customerGender: customerGender || null,
       status,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -37,10 +37,10 @@ export async function POST(req: NextRequest) {
     const result = await collection.insertOne(booking);
     await client.close();
 
-    return NextResponse.json({ 
-      ok: true, 
+    return NextResponse.json({
+      ok: true,
       bookingId: result.insertedId.toString(),
-      booking 
+      booking
     });
   } catch (error) {
     console.error('Booking creation error:', error);
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
     }
 
     const bookings = await collection.find(query).toArray();
-    
+
     // If system admin, also fetch salon names for better display
     if (isSystemAdmin && bookings.length > 0) {
       const salonsCollection = db.collection("salons");
@@ -89,15 +89,15 @@ export async function GET(req: NextRequest) {
         { uid: { $in: salonUids } },
         { projection: { uid: 1, name: 1, email: 1 } }
       ).toArray();
-      
+
       const salonMap = Object.fromEntries(salons.map(s => [s.uid, s]));
-      
+
       // Enrich bookings with salon info
       const enrichedBookings = bookings.map(booking => ({
         ...booking,
         salonInfo: salonMap[booking.salonUid] || null
       }));
-      
+
       await client.close();
       return NextResponse.json({ bookings: enrichedBookings });
     }

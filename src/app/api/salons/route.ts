@@ -97,7 +97,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { email, name, imageUrl, imageUrls, description, location, contact, lat, lng, googleMapsAddress, workingDays, holidays, employees, disableBookingHistory, storeCustomerAddress, plan } = await req.json();
+    const { email, name, imageUrl, imageUrls, description, location, contact, lat, lng, googleMapsAddress, gender, workingDays, holidays, employees, disableBookingHistory, storeCustomerAddress, plan } = await req.json();
     if (!email) {
       return NextResponse.json({ error: 'Missing email' }, { status: 400 });
     }
@@ -121,6 +121,10 @@ export async function PATCH(req: Request) {
     }
     if (typeof googleMapsAddress === "string") {
       updateFields.googleMapsAddress = googleMapsAddress;
+    }
+    // Support updating salon gender
+    if (typeof gender === "string") {
+      updateFields.gender = gender;
     }
     if (typeof contact === "string") {
       updateFields.contact = contact;
@@ -176,18 +180,18 @@ export async function DELETE(request: Request) {
     if (!email) {
       return NextResponse.json({ error: 'Missing email' }, { status: 400 });
     }
-    
+
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
-    
+
     const result = await db.collection('salons').deleteOne({ email });
-    
+
     await client.close();
-    
+
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Salon not found' }, { status: 404 });
     }
-    
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

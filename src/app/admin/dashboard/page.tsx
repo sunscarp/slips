@@ -19,10 +19,10 @@ const COLORS = {
 
 const NAV_LINKS = [
   { name: "Analytics", href: "/admin/analytics" },
-  { name: "Bookings", href: "/admin/bookings" },
+  { name: "Orders", href: "/admin/orders" },
   { name: "Dashboard", href: "/admin/dashboard" },
   { name: "Reviews", href: "/admin/reviews" },
-  { name: "Services", href: "/admin/services" },
+  { name: "Products", href: "/admin/products" },
   { name: "Settings", href: "/admin/settings" },
 ];
 
@@ -321,28 +321,46 @@ export default function SalonDashboard() {
           ? Object.keys(serviceCount).reduce((a, b) => serviceCount[a] > serviceCount[b] ? a : b)
           : 'Keine Dienstleistungen';
 
+        // Fetch products (services collection represents products)
+        let productsCount = 0;
+        try {
+          const productsRes = await fetch(`/api/services?uid=${encodeURIComponent(salonUid)}`);
+          const productsData = await productsRes.json();
+          const products = productsData.services || [];
+          productsCount = Array.isArray(products) ? products.length : 0;
+        } catch (err) {
+          console.error('Error fetching products for stats:', err);
+          productsCount = 0;
+        }
+
         setStats([
           {
-            id: 'bookings',
-            title: 'Buchungen heute',
-            // Show as "upcoming / total" (completed + upcoming)
-            value: `${todayUpcomingBookings.length} / ${todayBookings.length}`,
-            icon: <FiCalendar size={24} color="#222" />,
-            upcomingCount: todayUpcomingBookings.length,
-            completedCount: todayCompletedBookings.length
-          },
-          {
-            id: 'popular',
-            title: 'Beliebteste Dienstleistung',
-            value: popularService,
-            icon: <FiTrendingUp size={24} color="#222" />
-          },
+              id: 'bookings',
+              title: 'Bestellungen heute',
+              // Show as "upcoming / total" (completed + upcoming)
+              value: `${todayUpcomingBookings.length} / ${todayBookings.length}`,
+              icon: <FiCalendar size={24} color="#222" />,
+              upcomingCount: todayUpcomingBookings.length,
+              completedCount: todayCompletedBookings.length
+            },
+            {
+              id: 'popular',
+              title: 'Beliebtestes Produkt',
+              value: popularService,
+              icon: <FiTrendingUp size={24} color="#222" />
+            },
           {
             id: 'rating',
             title: 'Durchschnittliche Bewertung',
             value: avgRating,
             icon: <FiStar size={24} color="#222" />
           },
+          {
+            id: 'products',
+            title: 'Produkte insgesamt',
+            value: productsCount,
+            icon: <FiScissors size={24} color="#222" />
+          }
         ]);
 
         // Weekly bookings trend (all except cancelled)
@@ -449,36 +467,14 @@ export default function SalonDashboard() {
   // Find the next appointment (first in sorted todayBookings)
   const nextAppointment = todayBookings.length > 0 ? todayBookings[0] : null;
 
-  // Prepare stat cards, swap order: Buchungen heute first, then Nächster Termin
+  // Prepare stat cards: Bookings(orders) today, popular product, rating, products total
   const statCards = [
-    stats[0], // Buchungen heute
-    {
-      id: 'next',
-      title: 'Nächster Termin',
-      value: nextAppointment
-        ? (
-            <div className="flex flex-col gap-1">
-              <span className="font-semibold text-base sm:text-lg text-gray-900">{nextAppointment.service}</span>
-              <span className="text-xs text-gray-700">
-                {nextAppointment.time} - {nextAppointment.endTime}
-                <span className="ml-2 text-gray-400">({nextAppointment.duration} min)</span>
-              </span>
-              <span className="text-xs text-gray-700 flex items-center">
-                <FiUser className="mr-1" /> {nextAppointment.customer}
-              </span>
-              {nextAppointment.employee && (
-                <span className="text-xs text-gray-700 flex items-center">
-                  <FiScissors className="mr-1" /> {nextAppointment.employee}
-                </span>
-              )}
-            </div>
-          )
-        : <span className="text-xs text-gray-500">Kein nächster Termin</span>,
-      icon: <FiClock size={24} color="#222" />,
-    },
-    ...stats.slice(1),
+    stats[0], // Bestellungen heute
+    stats[1] || { id: 'popular', title: 'Beliebtestes Produkt', value: 'Keine Produkte', icon: <FiTrendingUp size={24} color="#222" /> },
+    stats[2] || { id: 'rating', title: 'Durchschnittliche Bewertung', value: '0.0', icon: <FiStar size={24} color="#222" /> },
+    stats[3] || { id: 'products', title: 'Produkte insgesamt', value: 0, icon: <FiScissors size={24} color="#222" /> }
   ];
-
+  
   if (loading) {
     return <LoadingScreen />;
   }
@@ -528,14 +524,14 @@ export default function SalonDashboard() {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
               {statCards.map((stat) => (
-                <StatCard key={stat.id} stat={stat} />
-              ))}
+                  <StatCardView key={stat.id} stat={stat} />
+                ))}
             </div>
             {/* Today's Bookings */}
             <section className="mb-6 sm:mb-8">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center">
-                  <FiClock className="mr-2" /> Buchungen heute
+                  <FiClock className="mr-2" /> Bestellungen heute
                 </h2>
                 <span className="text-xs sm:text-sm text-gray-500">
                   {(() => {
@@ -550,11 +546,10 @@ export default function SalonDashboard() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Uhrzeit / Dauer
+                          Bestellinfo
                         </th>
-                        <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dienstleistung</th>
+                        <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produkt</th>
                         <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kunde</th>
-                        <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mitarbeiter</th>
                         <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
                       </tr>
                     </thead>
@@ -563,20 +558,13 @@ export default function SalonDashboard() {
                         todayBookings.map((booking) => (
                           <tr key={booking.id} className={booking.status !== 'upcoming' ? 'opacity-50' : ''}>
                             <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
-                              {/* Show time range and duration */}
-                              {booking.time} - {booking.endTime}
-                              <span className="ml-2 text-gray-400 text-xs">
-                                ({booking.duration} min)
-                              </span>
+                              {booking.time}
                             </td>
                             <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                               {booking.service}
                             </td>
                             <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                               {booking.customer}
-                            </td>
-                            <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                              {booking.employee || <span className="italic text-gray-400">-</span>}
                             </td>
                             <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
                               {booking.status === 'upcoming' && (
@@ -610,8 +598,8 @@ export default function SalonDashboard() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={5} className="px-2 sm:px-6 py-4 text-center text-xs sm:text-sm text-gray-500">
-                            Keine Buchungen für heute geplant
+                          <td colSpan={4} className="px-2 sm:px-6 py-4 text-center text-xs sm:text-sm text-gray-500">
+                            Keine Bestellungen für heute geplant
                           </td>
                         </tr>
                       )}
@@ -629,7 +617,7 @@ export default function SalonDashboard() {
 }
 
 // Component for stat cards
-const StatCard = ({ stat }: { stat: StatCard | any }) => {
+const StatCardView = ({ stat }: { stat: StatCard | any }) => {
   // Special rendering for "Buchungen heute"
   if (stat.id === 'bookings' && typeof stat.upcomingCount === 'number' && typeof stat.completedCount === 'number') {
     return (

@@ -357,7 +357,6 @@ export default function CustomersPage() {
       "Gesamt Buchungen",
       "Abgeschlossen",
       "Storniert", 
-      "Nicht erschienen",
       "Jemals verpasst",
       "Kundenzufriedenheit",
       "Erste Buchung",
@@ -373,7 +372,6 @@ export default function CustomersPage() {
       customer.totalBookings,
       customer.completedBookings,
       customer.cancelledBookings,
-      customer.noShowBookings,
       customer.hasEverMissed ? "Ja" : "Nein",
       `${customer.rating}/5`,
       customer.firstBooking,
@@ -503,16 +501,10 @@ export default function CustomersPage() {
 
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <h3 className="text-sm font-medium text-gray-600 mb-1">Gesamt Kunden</h3>
-              <p className="text-2xl font-bold text-black">{filteredCustomers.length}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <h3 className="text-sm font-medium text-gray-600 mb-1">🚫 No-Shows</h3>
-              <p className="text-2xl font-bold text-red-600">
-                {filteredCustomers.filter(c => c.noShowBookings > 0).length}
-              </p>
-            </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Gesamt Kunden</h3>
+                <p className="text-2xl font-bold text-black">{filteredCustomers.length}</p>
+              </div>
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <h3 className="text-sm font-medium text-gray-600 mb-1">💰 Gesamt Umsatz</h3>
               <p className="text-2xl font-bold text-black">
@@ -583,11 +575,6 @@ export default function CustomersPage() {
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex flex-col gap-1">
-                            {customer.noShowBookings > 0 && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                {customer.noShowBookings} No-Shows
-                              </span>
-                            )}
                             {customer.cancelledBookings > 0 && (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                 {customer.cancelledBookings} Storniert
@@ -665,10 +652,7 @@ export default function CustomersPage() {
                       <div className="text-xs text-gray-600">Buchungen</div>
                       <div className="font-bold text-lg text-black">{selectedCustomer.totalBookings}</div>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-600">No-Shows</div>
-                      <div className="font-bold text-lg text-red-600">{selectedCustomer.noShowBookings}</div>
-                    </div>
+                    {/* No-Shows removed per product marketplace requirements */}
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <div className="text-xs text-gray-600">Ausgaben</div>
                       <div className="font-bold text-lg text-black">€{selectedCustomer.totalSpent.toFixed(2)}</div>

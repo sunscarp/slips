@@ -31,20 +31,28 @@ export async function POST(req: NextRequest) {
     const salon = await salonsCollection.findOne({ uid });
     const salonName = salon?.name || "Unknown Salon";
 
-    const doc = { 
-      name, 
-      description, 
+    const doc = {
+      name,
+      description,
       price: price !== undefined ? Number(price) : undefined,
       pricePerBlock: pricePerBlock !== undefined ? Number(pricePerBlock) : undefined,
       priceBlockSize: priceBlockSize !== undefined ? Number(priceBlockSize) : undefined,
-      duration: Number(duration), 
-      imageUrl, 
-      uid, 
-      salonName, 
+      duration: Number(duration),
+      imageUrl,
+      uid,
+      salonName,
       serviceType,
       durationPrices
     };
     await collection.insertOne(doc);
+    // Increment productCount on the salon document
+    try {
+      if (salon && salon.uid) {
+        await salonsCollection.updateOne({ uid }, { $inc: { productCount: 1 } });
+      }
+    } catch (err) {
+      console.error('Failed to increment salon productCount', err);
+    }
     await client.close();
     return NextResponse.json({ ok: true });
   }
@@ -54,14 +62,14 @@ export async function POST(req: NextRequest) {
       await client.close();
       return NextResponse.json({ error: "Missing _id or uid" }, { status: 400 });
     }
-    
+
     // Ensure numeric fields are properly converted
     const updateData: any = { ...rest, uid, serviceType };
     if (updateData.price !== undefined) updateData.price = Number(updateData.price);
     if (updateData.pricePerBlock !== undefined) updateData.pricePerBlock = Number(updateData.pricePerBlock);
     if (updateData.priceBlockSize !== undefined) updateData.priceBlockSize = Number(updateData.priceBlockSize);
     if (updateData.duration !== undefined) updateData.duration = Number(updateData.duration);
-    
+
     await collection.updateOne(
       { _id: new ObjectId(_id), uid },
       { $set: updateData }
@@ -75,7 +83,16 @@ export async function POST(req: NextRequest) {
       await client.close();
       return NextResponse.json({ error: "Missing _id or uid" }, { status: 400 });
     }
-    await collection.deleteOne({ _id: new ObjectId(_id), uid });
+    const delResult = await collection.deleteOne({ _id: new ObjectId(_id), uid });
+    // Decrement productCount on salon if delete removed a doc
+    try {
+      if (delResult.deletedCount === 1) {
+        const salonsCollection = db.collection('salons');
+        await salonsCollection.updateOne({ uid }, { $inc: { productCount: -1 } });
+      }
+    } catch (err) {
+      console.error('Failed to decrement salon productCount', err);
+    }
     await client.close();
     return NextResponse.json({ ok: true });
   }

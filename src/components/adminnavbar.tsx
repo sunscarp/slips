@@ -9,11 +9,9 @@ const COLORS = {
 
 const NAV_LINKS = [
   { name: "Dashboard", href: "/admin/dashboard" },
-  { name: "Buchungen", href: "/admin/bookings" },
-  { name: "Kalender", href: "/admin/calendar" },
+  { name: "Bestellungen", href: "/admin/orders" },
   { name: "Kunden", href: "/admin/customers" },
-  { name: "Mitarbeiter", href: "/admin/employee" },
-  { name: "Dienstleistungen", href: "/admin/services" },
+  { name: "Produkte", href: "/admin/products" },
   { name: "Bewertungen", href: "/admin/reviews" },
   { name: "Analysen", href: "/admin/analytics" },
   { name: "Salonprofil", href: "/admin/salonprofile" }, // <-- Added here
@@ -107,121 +105,8 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
 
   const navLinks = getNavLinks();
 
-  // Get display name for plan - simplified
-  const getPlanDisplayName = (planId: string | undefined) => {
-    if (!planId) return "Founders Plan";
-    
-    const planNames: { [key: string]: string } = {
-      "founders": "Founders Plan",
-      "startup": "Startup Plan", 
-      "grow": "Grow Plan",
-      "unicorn": "Unicorn Plan",
-      "custom": "Custom Plan"
-    };
-    
-    return planNames[planId] || planId.charAt(0).toUpperCase() + planId.slice(1) + " Plan";
-  };
-
-  // Use salon prop directly
-  const currentPlan = getPlanDisplayName(salon?.plan || "founders");
-
   return (
     <>
-      {/* Announcement Bar: Only show salon name for system admin, otherwise only the announcement */}
-      <div
-        style={{
-          width: "100%",
-          background: "#f7f3e9", // swapped from "#e0a96d"
-          color: "#5C6F68",      // swapped from "#fff"
-          textAlign: "center",
-          padding: "0.7rem 0",
-          fontWeight: 600, // keep fontWeight for bar, but not for text
-          fontSize: "1.05rem",
-          letterSpacing: 0.2,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 24,
-          flexWrap: "wrap",
-        }}
-      >
-        {isSystemAdmin && salonName ? (
-          <span
-            style={{
-              background: "#fff",
-              color: "#e0a96d",
-              borderRadius: 8,
-              padding: "0.2rem 0.9rem",
-              fontWeight: 700,
-              fontSize: "1.08rem",
-              letterSpacing: 0.1,
-              marginRight: 12,
-              boxShadow: "0 1px 4px #0001",
-              border: "1px solid #fff7",
-              display: "inline-block",
-            }}
-          >
-            {salonName}
-          </span>
-        ) : (
-          <a
-            href="https://woocommerce.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: "#5C6F68", // swapped from "#fff"
-              textDecoration: "underline",
-              fontWeight: 400, // remove bold
-            }}
-          >
-            Dein Google Profil ist veraltet, kontaktiere uns jetzt um deine Online-Präsenz zu verbessern.
-          </a>
-        )}
-      </div>
-      {/* Permanent Plan Announcement Bar */}
-      <div
-        style={{
-          width: "100%",
-          background: "#e0a96d", // swapped from "#f7f3e9"
-          color: "#fff",         // swapped from "#5C6F68"
-          textAlign: "center",
-          padding: "0.35rem 0",
-          fontWeight: 500, // keep for bar, but not for text
-          fontSize: "0.98rem",
-          letterSpacing: 0.1,
-          borderBottom: "1px solid #e0a96d33",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 12,
-          minHeight: 32,
-        }}
-      >
-        <span>
-          Aktueller Plan: <span style={{ fontWeight: 400 }}>{currentPlan}</span>
-        </span>
-        <span style={{ color: "#fff", fontWeight: 400 }}>
-          (Alle neuen Kunden erhalten den Founders Plan für 2 Monate kostenlos!)
-        </span>
-        <a
-          href="/admin/plans"
-          style={{
-            marginLeft: 16,
-            background: "#fff",
-            color: "#e0a96d",
-            borderRadius: 6,
-            padding: "0.18rem 0.8rem",
-            fontWeight: 600,
-            fontSize: "0.95rem",
-            textDecoration: "none",
-            transition: "background 0.15s",
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          Upgrade anzeigen
-        </a>
-      </div>
       {/* Navbar */}
       <nav
         style={{

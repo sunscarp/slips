@@ -78,12 +78,7 @@ export default function BookingSummaryPage() {
   const [serviceSelections, setServiceSelections] = useState<ServiceSelection[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState({
-    street: '',
-    number: '',
-    zip: '',
-    country: ''
-  });
+  const [customerGender, setCustomerGender] = useState<'male' | 'female' | ''>('');
 
   useEffect(() => {
     let loadedSalon = false;
@@ -444,13 +439,7 @@ export default function BookingSummaryPage() {
   }, [selectedDate, selectedEmployees, salon, services, bookedIntervals, allEmployeesSelected]);
 
   // Customer info validation
-  const isCustomerInfoValid = customerName.trim() !== '' && customerPhone.trim() !== '' && 
-    (!salon?.storeCustomerAddress || (
-      customerAddress.street.trim() !== '' && 
-      customerAddress.number.trim() !== '' && 
-      customerAddress.zip.trim() !== '' && 
-      customerAddress.country.trim() !== ''
-    ));
+  const isCustomerInfoValid = customerName.trim() !== '' && customerPhone.trim() !== '' && customerGender !== '';
 
   async function createBooking() {
     if (!salon || !selectedDate || !selectedTime || !services.length || !allEmployeesSelected || !isCustomerInfoValid) {
@@ -495,7 +484,7 @@ export default function BookingSummaryPage() {
         total,
         customerName,
         customerPhone,
-        customerAddress: salon.storeCustomerAddress ? customerAddress : null, // Only include address if salon requires it
+        customerGender,
         status: 'confirmed'
       };
 
@@ -947,59 +936,20 @@ export default function BookingSummaryPage() {
                       />
                     </div>
                     
-                    {/* Customer Address Fields - Only show if salon requires it */}
-                    {salon?.storeCustomerAddress && (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="col-span-2">
-                            <input
-                              type="text"
-                              value={customerAddress.street}
-                              onChange={e => setCustomerAddress(prev => ({ ...prev, street: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
-                              placeholder="Straße"
-                              required
-                              style={{ color: "#000" }}
-                            />
-                          </div>
-                          <div>
-                            <input
-                              type="text"
-                              value={customerAddress.number}
-                              onChange={e => setCustomerAddress(prev => ({ ...prev, number: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
-                              placeholder="Nr."
-                              required
-                              style={{ color: "#000" }}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <input
-                              type="text"
-                              value={customerAddress.zip}
-                              onChange={e => setCustomerAddress(prev => ({ ...prev, zip: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
-                              placeholder="PLZ"
-                              required
-                              style={{ color: "#000" }}
-                            />
-                          </div>
-                          <div>
-                            <input
-                              type="text"
-                              value={customerAddress.country}
-                              onChange={e => setCustomerAddress(prev => ({ ...prev, country: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
-                              placeholder="Stadt"
-                              required
-                              style={{ color: "#000" }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    {/* Gender (required) */}
+                    <div>
+                      <select
+                        value={customerGender}
+                        onChange={e => setCustomerGender(e.target.value as 'male' | 'female' | '')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                        required
+                        style={{ color: "#000" }}
+                      >
+                        <option value="">Geschlecht wählen</option>
+                        <option value="female">Weiblich</option>
+                        <option value="male">Männlich</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1045,9 +995,7 @@ export default function BookingSummaryPage() {
               <div className="space-y-2 text-sm text-gray-700 mb-6">
                 <p><strong>Kunde:</strong> {customerName}</p>
                 <p><strong>Telefon:</strong> {customerPhone}</p>
-                {salon?.storeCustomerAddress && customerAddress.street && (
-                  <p><strong>Adresse:</strong> {customerAddress.street} {customerAddress.number}, {customerAddress.zip} {customerAddress.country}</p>
-                )}
+                <p><strong>Geschlecht:</strong> {customerGender === 'male' ? 'Männlich' : (customerGender === 'female' ? 'Weiblich' : '')}</p>
                 <p><strong>Salon:</strong> {salon.name}</p>
                 <p><strong>Datum & Uhrzeit:</strong> {selectedDate && (() => {
                   const [year, month, day] = selectedDate.split('-').map(Number);

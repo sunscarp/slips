@@ -392,20 +392,8 @@ function AnalyticsContent() {
   };
 
   useEffect(() => {
-    if (
-      userRole === "salon" &&
-      !isSystemAdmin &&
-      salon &&
-      plans.length > 0
-    ) {
-      // Only allow analytics for unicorn, founders, custom
-      const allowedPlans = ["unicorn", "founders", "custom"];
-      const salonPlan = (salon.plan || "").toLowerCase();
-      const hasAnalyticsAccess = allowedPlans.includes(salonPlan);
-      setShowPlanModal(!hasAnalyticsAccess);
-    } else {
-      setShowPlanModal(false);
-    }
+    // Plan gating removed: analytics visible to all salon users
+    setShowPlanModal(false);
   }, [userRole, isSystemAdmin, salon, plans]);
 
   if (loading) {
@@ -731,9 +719,7 @@ function AnalyticsContent() {
         </div>
         <Footer />
       </main>
-      {showPlanModal && (
-        <PlanUpgradeModal plan={salon?.plan} plans={plans} />
-      )}
+      {/* Plan gating removed — modal suppressed */}
     </>
   );
 }
