@@ -20,13 +20,13 @@ export default function DatenschutzPage() {
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-2 text-gray-700">3. Erhebung und Verarbeitung personenbezogener Daten</h2>
           <p className="text-black text-sm">
-            Wir erheben personenbezogene Daten, wenn Sie ein Konto erstellen, eine Buchung vornehmen oder uns kontaktieren. Die Daten werden ausschließlich zur Vertragsabwicklung und zur Verbesserung unseres Angebots verwendet.
+            Wir erheben personenbezogene Daten, wenn Sie ein Konto erstellen, eine Bestellung aufgeben oder uns kontaktieren. Die Daten werden ausschließlich zur Vertragsabwicklung und zur Verbesserung unseres Angebots verwendet.
           </p>
         </section>
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-2 text-gray-700">4. Weitergabe von Daten</h2>
           <p className="text-black text-sm">
-            Eine Weitergabe Ihrer Daten erfolgt nur an die jeweiligen Salons zur Durchführung der Buchung oder wenn gesetzliche Vorgaben dies erfordern.
+            Eine Weitergabe Ihrer Daten erfolgt nur an die jeweiligen Verkäufer zur Durchführung der Bestellung oder wenn gesetzliche Vorgaben dies erfordern.
           </p>
         </section>
         <section className="mb-6">

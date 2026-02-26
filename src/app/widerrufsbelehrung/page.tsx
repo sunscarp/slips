@@ -26,7 +26,7 @@ export default function WiderrufsbelehrungPage() {
         <section>
           <h2 className="text-lg font-semibold mb-2 text-gray-700">Ausschluss des Widerrufsrechts</h2>
           <p className="text-black text-sm">
-            Das Widerrufsrecht besteht nicht bei Dienstleistungen, die bereits vollständig erbracht wurden oder bei denen die Ausführung bereits begonnen hat.
+            Das Widerrufsrecht besteht nicht bei Waren, die bereits vollständig geliefert wurden oder bei personalisierten Produkten.
           </p>
         </section>
         <div className="mt-8 text-xs text-gray-500 text-center">

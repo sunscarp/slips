@@ -9,7 +9,7 @@ type CalendarBooking = {
   endTime: string;
   service: string;
   customer: string;
-  status: 'upcoming' | 'completed' | 'no-show' | 'confirmed';
+  status: 'pending' | 'completed' | 'rejected' | 'accepted';
   date: string;
   employee?: string;
 };
@@ -103,7 +103,7 @@ export default function CalendarPage() {
                     endTime: endTime,
                     service: booking.services.map((s: any) => s.name).join(', '),
                     customer: booking.customerName,
-                    status: booking.status === 'confirmed' ? 'upcoming' : booking.status,
+                    status: booking.status === 'confirmed' ? 'accepted' : booking.status === 'upcoming' ? 'pending' : booking.status === 'no-show' ? 'rejected' : booking.status,
                     date: booking.date,
                     employee: employeeNames
                   };
@@ -149,7 +149,7 @@ export default function CalendarPage() {
       <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans px-2">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-primary-600 text-base sm:text-lg">Kalender wird geladen...</p>
+          <p className="text-primary-600 text-base sm:text-lg">Bestellungen werden geladen...</p>
         </div>
       </main>
     );
@@ -160,7 +160,7 @@ export default function CalendarPage() {
       <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans px-2">
         <div className="text-center p-4 sm:p-6 bg-white rounded-lg shadow-sm max-w-md mx-2 sm:mx-4">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Zugriff eingeschränkt</h2>
-          <p className="text-gray-600 mb-4 text-xs sm:text-base">Bitte melden Sie sich an, um den Kalender zu sehen</p>
+          <p className="text-gray-600 mb-4 text-xs sm:text-base">Bitte melde dich an, um die Bestellungen zu sehen</p>
           <a href="/login" className="bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-md w-full sm:w-auto inline-block">
             Anmelden
           </a>
@@ -182,13 +182,13 @@ export default function CalendarPage() {
         <div className="max-w-7xl mx-auto py-4 px-2 sm:py-6 sm:px-4 lg:px-8">
           <div className="mb-4 sm:mb-6 lg:mb-8 text-center">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-              Kalender Übersicht
+              Bestell-Übersicht
               {viewingSalonUid && isSystemAdmin && (
                 <span className="text-sm sm:text-lg text-gray-600 block mt-1">(System-Ansicht)</span>
               )}
             </h1>
             <p className="text-gray-600 text-xs sm:text-sm lg:text-base px-4">
-              Wochenansicht aller Termine im Salon. Klicken Sie auf Tagesnamen für ganztägige Feiertage.
+              Übersicht aller Bestellungen. Klicke auf Tagesnamen für Pausentage.
             </p>
           </div>
           <EnhancedCalendarWidget
@@ -373,12 +373,12 @@ const EnhancedCalendarWidget = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'upcoming':
-      case 'confirmed':
+      case 'pending':
+      case 'accepted':
         return 'bg-blue-50 text-blue-800 border-l-4 border-blue-500';
       case 'completed':
         return 'bg-emerald-50 text-emerald-800 border-l-4 border-emerald-500';
-      case 'no-show':
+      case 'rejected':
         return 'bg-red-50 text-red-800 border-l-4 border-red-500';
       default:
         return 'bg-gray-50 text-gray-800 border-l-4 border-gray-400';
@@ -436,7 +436,7 @@ const EnhancedCalendarWidget = ({
       <div className={`${isMobile ? 'grid grid-cols-2 gap-2' : 'flex flex-wrap gap-6'} text-xs sm:text-sm bg-white p-3 sm:p-4 rounded-xl border border-gray-100`}>
         <div className="flex items-center">
           <div className="w-3 h-3 bg-blue-500 rounded-sm mr-2 shadow-sm"></div>
-          <span className="text-gray-700 font-medium">Bevorstehend</span>
+          <span className="text-gray-700 font-medium">Ausstehend</span>
         </div>
         <div className="flex items-center">
           <div className="w-3 h-3 bg-emerald-500 rounded-sm mr-2 shadow-sm"></div>
@@ -444,11 +444,11 @@ const EnhancedCalendarWidget = ({
         </div>
         <div className="flex items-center">
           <div className="w-3 h-3 bg-red-500 rounded-sm mr-2 shadow-sm"></div>
-          <span className="text-gray-700 font-medium">Nicht erschienen</span>
+          <span className="text-gray-700 font-medium">Abgelehnt</span>
         </div>
         <div className="flex items-center">
           <div className="w-3 h-3 bg-gray-300 rounded-sm mr-2 shadow-sm"></div>
-          <span className="text-gray-700 font-medium">Geschlossen/Feiertag</span>
+          <span className="text-gray-700 font-medium">Geschlossen/Pausentag</span>
         </div>
       </div>
 
@@ -482,7 +482,7 @@ const EnhancedCalendarWidget = ({
                             : ''
                       }`}
                       onClick={() => onDateClick && onDateClick(day.date)}
-                      title={day.isHoliday ? "Feiertag - Klicken zum Entfernen" : "Klicken um als Feiertag zu markieren"}
+                      title={day.isHoliday ? "Pausentag - Klicken zum Entfernen" : "Klicken um als Pausentag zu markieren"}
                     >
                       <div className="text-xs font-medium uppercase tracking-wider mb-1">{day.dayName}</div>
                       <div className={`text-lg font-bold ${day.isToday ? 'text-blue-800' : ''}`}>
@@ -496,12 +496,12 @@ const EnhancedCalendarWidget = ({
                             : 'bg-blue-100 text-blue-800'
                         }`}>
                           {dayBookings.length === 1
-                            ? '1 Buchung'
-                            : `${dayBookings.length} Buchungen`}
+                            ? '1 Bestellung'
+                            : `${dayBookings.length} Bestellungen`}
                         </span>
                       </div>
                       {day.isHoliday && (
-                        <div className="text-xs font-medium mt-1 text-black">Feiertag</div>
+                        <div className="text-xs font-medium mt-1 text-black">Pausentag</div>
                       )}
                       {!day.isOpen && !day.isHoliday && (
                         <div className="text-xs text-gray-500 font-medium mt-1">Geschlossen</div>
@@ -636,7 +636,7 @@ const EnhancedCalendarWidget = ({
                           : ''
                     }`}
                     onClick={() => onDateClick && onDateClick(day.date)}
-                    title={day.isHoliday ? "Feiertag - Klicken zum Entfernen" : "Klicken um als Feiertag zu markieren"}
+                    title={day.isHoliday ? "Pausentag - Klicken zum Entfernen" : "Klicken um als Pausentag zu markieren"}
                   >
                     <div className="text-xs font-medium uppercase tracking-wider mb-1">{day.dayName}</div>
                     <div className={`text-xl font-bold ${day.isToday ? 'text-blue-800' : ''}`}>
@@ -650,12 +650,12 @@ const EnhancedCalendarWidget = ({
                           : 'bg-blue-100 text-blue-800'
                       }`}>
                         {dayBookings.length === 1
-                          ? '1 Buchung'
-                          : `${dayBookings.length} Buchungen`}
+                          ? '1 Bestellung'
+                          : `${dayBookings.length} Bestellungen`}
                       </span>
                     </div>
                     {day.isHoliday && (
-                      <div className="text-xs font-medium mt-1 text-black">Feiertag</div>
+                      <div className="text-xs font-medium mt-1 text-black">Pausentag</div>
                     )}
                     {!day.isOpen && !day.isHoliday && (
                       <div className="text-xs text-gray-500 font-medium mt-1">Geschlossen</div>
@@ -795,7 +795,7 @@ const HolidayModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         <div className="p-4 sm:p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Ganztägigen Feiertag verwalten</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Pausentag verwalten</h3>
           <p className="text-gray-600 mb-6 text-sm sm:text-base">
             <strong>{new Date(selectedDate).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
           </p>
@@ -803,10 +803,10 @@ const HolidayModal = ({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 rounded-lg mb-6 space-y-3 sm:space-y-0">
             <div>
               <div className="font-medium text-gray-900 text-sm sm:text-base">
-                {isHoliday ? 'Ist ein Feiertag' : 'Normaler Arbeitstag'}
+                {isHoliday ? 'Ist ein Pausentag' : 'Normaler Tag'}
               </div>
               <div className="text-xs sm:text-sm text-gray-600">
-                {isHoliday ? 'Salon ist den ganzen Tag geschlossen' : 'Salon ist nach normalen Öffnungszeiten geöffnet'}
+                {isHoliday ? 'Verkäufer ist den ganzen Tag nicht erreichbar' : 'Verkäufer ist verfügbar'}
               </div>
             </div>
             <button
@@ -818,7 +818,7 @@ const HolidayModal = ({
                   : 'bg-red-100 text-red-700 hover:bg-red-200'
               } disabled:opacity-50`}
             >
-              {loading ? 'Wird gespeichert...' : (isHoliday ? 'Feiertag entfernen' : 'Als Feiertag markieren')}
+              {loading ? 'Wird gespeichert...' : (isHoliday ? 'Pausentag entfernen' : 'Als Pausentag markieren')}
             </button>
           </div>
           
@@ -850,13 +850,13 @@ const PlanUpgradeModal = ({ plan, plans }: { plan?: string; plans: any[] }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto">
       <div className="absolute inset-0 backdrop-blur-sm transition-all duration-300" />
       <div className="relative text-center p-6 bg-white rounded-lg shadow-lg max-w-md mx-4 border-2 border-[#5C6F68]">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Kalender nur für Premium-Pläne</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Bestell-Übersicht nur für Premium-Pläne</h2>
         <p className="text-gray-600 mb-4">
-          Die Kalenderansicht ist nur für bestimmte Pläne verfügbar.<br />
+          Die Bestell-Übersicht ist nur für bestimmte Pläne verfügbar.<br />
           Ihr aktueller Plan: <strong>{currentPlanName}</strong>
         </p>
         <p className="text-sm text-gray-500 mb-4">
-          Upgraden Sie Ihren Plan, um die erweiterte Kalenderansicht zu nutzen.
+          Upgraden Sie Ihren Plan, um die erweiterte Bestell-Übersicht zu nutzen.
         </p>
         <a
           href="/admin/plans"

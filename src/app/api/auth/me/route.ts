@@ -16,6 +16,7 @@ export async function GET() {
     const payload = jwt.verify(token, JWT_SECRET) as {
       uid: string;
       email: string;
+      username: string;
       role: string;
       name: string;
     };
@@ -23,6 +24,7 @@ export async function GET() {
     return NextResponse.json({
       uid: payload.uid,
       email: payload.email,
+      username: payload.username || '',
       role: payload.role,
       name: payload.name,
     }, { status: 200 });

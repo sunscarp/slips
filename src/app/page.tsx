@@ -101,11 +101,11 @@ function HeroSection({ onSearch }: { onSearch: (query: { name: string; treatment
               textAlign: "left",
             }}
           >
-            Salon-Suche
+            Marketplace
           </div>
           <input
             type="text"
-            placeholder="Salonname"
+            placeholder="Verkäufer oder Standort"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             style={{
@@ -121,24 +121,9 @@ function HeroSection({ onSearch }: { onSearch: (query: { name: string; treatment
           />
           <input
             type="text"
-            placeholder="Behandlung (z.B. Haarschnitt, Massage)"
+            placeholder="Produkt (z.B. Socken, Dessous)"
             value={treatment}
             onChange={(e) => setTreatment(e.target.value)}
-            style={{
-              padding: "0.8rem 1rem",
-              borderRadius: 10,
-              border: `1px solid ${COLORS.primary}30`,
-              fontSize: "1rem",
-              fontFamily: "'Roboto', sans-serif",
-              background: "#f9fafb",
-              transition: "all 0.2s",
-              marginBottom: 0,
-            }}
-          />
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
             style={{
               padding: "0.8rem 1rem",
               borderRadius: 10,
@@ -155,7 +140,7 @@ function HeroSection({ onSearch }: { onSearch: (query: { name: string; treatment
               onSearch({
                 name: input.trim(),
                 treatment: treatment.trim(),
-                date: date.trim(),
+                date: "",
               })
             }
             style={{
@@ -219,7 +204,7 @@ function HeroSection({ onSearch }: { onSearch: (query: { name: string; treatment
               padding: isMobile ? "0 1rem" : "0",
             }}
           >
-            Ihr digitaler Begleiter für Salonbuchungen.
+            Dein diskreter Marktplatz für exklusive Artikel.
           </div>
           <div
             style={{
@@ -232,7 +217,7 @@ function HeroSection({ onSearch }: { onSearch: (query: { name: string; treatment
               padding: isMobile ? "0 1rem" : "0",
             }}
           >
-            Finden, vergleichen und buchen Sie Salons in Ihrer Nähe – einfach, schnell und zuverlässig.
+            Entdecke Verkäufer in deiner Nähe – Privatsphäre und Diskretion sind unsere oberste Priorität.
           </div>
         </div>
       </div>
@@ -254,16 +239,16 @@ function HowItWorks() {
 
   const steps = [
     {
-      title: "Finden Sie Ihren Salon",
-      description: "Durchstöbern Sie unsere handverlesene Auswahl an Top-Salons",
+      title: "Finde deinen Verkäufer",
+      description: "Durchstöbere unseren Marktplatz und entdecke exklusive Artikel in deiner Nähe",
     },
     {
-      title: "Buchen Sie Ihren Termin",
-      description: "Wählen Sie Ihre bevorzugte Dienstleistung und Uhrzeit",
+      title: "Sende eine Kaufanfrage",
+      description: "Wähle deine gewünschten Artikel und sende eine unverbindliche Anfrage",
     },
     {
-      title: "Genießen Sie",
-      description: "Entspannen Sie und freuen Sie sich auf Ihren Termin",
+      title: "Erhalte deine Bestellung",
+      description: "Nach Bezahlung wird deine Bestellung diskret und sicher versendet",
     },
   ];
   return (
@@ -363,7 +348,7 @@ function HowItWorks() {
 export default function HomePage() {
   const router = useRouter();
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [user, setUser] = useState<{ email: string | null } | null>(null);
+  const [user, setUser] = useState<{ email: string | null; username?: string | null } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -378,7 +363,7 @@ export default function HomePage() {
   useEffect(() => {
     fetch("/api/auth/me")
       .then(r => r.ok ? r.json() : null)
-      .then(u => setUser(u ? { email: u.email } : null))
+      .then(u => setUser(u ? { email: u.email, username: u.username } : null))
       .catch(() => setUser(null));
   }, []);
 
@@ -391,15 +376,14 @@ export default function HomePage() {
   };
 
   function handleSearch(query: { name: string; treatment: string; date: string }) {
-    if (!query.name && !query.treatment && !query.date) {
-      setSearchError("Bitte geben Sie mindestens ein Suchkriterium ein.");
+    if (!query.name && !query.treatment) {
+      setSearchError("Bitte gib mindestens ein Suchkriterium ein.");
       return;
     }
-    // Redirect to /salons with query params
+    // Redirect to /salons (marketplace) with query params
     const params = new URLSearchParams();
     if (query.name) params.append("name", query.name);
     if (query.treatment) params.append("treatment", query.treatment);
-    if (query.date) params.append("date", query.date);
     router.push(`/salons?${params.toString()}`);
   }
 
@@ -413,7 +397,7 @@ export default function HomePage() {
       }}
     >
       {/* Pass user and logout handler to Navbar */}
-      <Navbar user={user ? { email: user.email } : undefined} onLogout={handleLogout} />
+      <Navbar user={user ? { email: user.email, username: user.username } : undefined} onLogout={handleLogout} />
       <link
         href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Poppins:wght@500;600;700&display=swap"
         rel="stylesheet"

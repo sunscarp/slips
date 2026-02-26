@@ -354,13 +354,13 @@ export default function CustomersPage() {
       "Telefon", 
       "E-Mail",
       "Adresse",
-      "Gesamt Buchungen",
+      "Gesamt Bestellungen",
       "Abgeschlossen",
       "Storniert", 
-      "Jemals verpasst",
-      "Kundenzufriedenheit",
-      "Erste Buchung",
-      "Letzte Buchung",
+      "Stornierungen",
+      "Käuferzufriedenheit",
+      "Erste Bestellung",
+      "Letzte Bestellung",
       "Gesamt ausgegeben (€)"
     ];
 
@@ -416,7 +416,7 @@ export default function CustomersPage() {
         <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
           <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">
             <h2 className="text-xl font-semibold text-black mb-2">Bitte einloggen</h2>
-            <p className="text-black mb-4">Melden Sie sich an, um die Kundenverwaltung zu sehen.</p>
+            <p className="text-black mb-4">Melden Sie sich an, um die Käufer-Übersicht zu sehen.</p>
           </div>
         </main>
         <Footer />
@@ -445,7 +445,7 @@ export default function CustomersPage() {
           {/* Header */}
           <div className="mb-8 text-center">
             <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2">
-              Kundenverwaltung
+              Käufer-Übersicht
               {isSystemAdmin && (
                 <span className="text-lg text-gray-600 block mt-1">
                   (System-Ansicht{salon?.name ? ` für ${salon.name}` : ""})
@@ -453,7 +453,7 @@ export default function CustomersPage() {
               )}
             </h1>
             <p className="text-black text-base sm:text-lg">
-              Verwalten Sie Ihre Kunden und analysieren Sie deren Buchungsverhalten
+              Übersicht über deine Käufer und deren Bestellungen
             </p>
           </div>
 
@@ -463,7 +463,7 @@ export default function CustomersPage() {
               <div className="flex flex-col sm:flex-row gap-4 flex-1">
                 <input
                   type="text"
-                  placeholder="Suche nach Name, Telefon oder E-Mail..."
+                  placeholder="Suche nach Name oder E-Mail..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
@@ -476,9 +476,9 @@ export default function CustomersPage() {
                   >
                     <option value="rating">Bewertung</option>
                     <option value="name">Name</option>
-                    <option value="totalBookings">Buchungen</option>
+                    <option value="totalBookings">Bestellungen</option>
                     <option value="totalSpent">Ausgaben</option>
-                    <option value="lastBooking">Letzte Buchung</option>
+                    <option value="lastBooking">Letzte Bestellung</option>
                   </select>
                   <button
                     onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
@@ -502,7 +502,7 @@ export default function CustomersPage() {
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="text-sm font-medium text-gray-600 mb-1">Gesamt Kunden</h3>
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Gesamt Käufer</h3>
                 <p className="text-2xl font-bold text-black">{filteredCustomers.length}</p>
               </div>
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -526,7 +526,7 @@ export default function CustomersPage() {
                       Durchschnittliche Bewertung
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Buchungen
+                      Bestellungen
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
@@ -535,7 +535,7 @@ export default function CustomersPage() {
                       Ausgaben
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Letzte Buchung
+                      Letzte Bestellung
                     </th>
                   </tr>
                 </thead>
@@ -582,7 +582,7 @@ export default function CustomersPage() {
                             )}
                             {!customer.hasEverMissed && (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Zuverlässig
+                                Aktiv
                               </span>
                             )}
                           </div>
@@ -602,7 +602,7 @@ export default function CustomersPage() {
             
             {filteredCustomers.length === 0 && (
               <div className="text-center py-8 text-gray-500">
-                Keine Kunden gefunden.
+                Keine Käufer gefunden.
               </div>
             )}
           </div>
@@ -649,7 +649,7 @@ export default function CustomersPage() {
                       </div>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-600">Buchungen</div>
+                      <div className="text-xs text-gray-600">Bestellungen</div>
                       <div className="font-bold text-lg text-black">{selectedCustomer.totalBookings}</div>
                     </div>
                     {/* No-Shows removed per product marketplace requirements */}
@@ -660,7 +660,7 @@ export default function CustomersPage() {
                   </div>
 
                   {/* Booking History */}
-                  <h3 className="text-lg font-bold text-black mb-4">Buchungshistorie</h3>
+                  <h3 className="text-lg font-bold text-black mb-4">Bestellhistorie</h3>
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {customerBookings.map((booking, index) => (
                       <div key={booking._id || index} className="border border-gray-200 rounded-lg p-4">
@@ -697,7 +697,7 @@ export default function CustomersPage() {
                     ))}
                     {customerBookings.length === 0 && (
                       <div className="text-center text-gray-500 py-4">
-                        Keine Buchungshistorie verfügbar.
+                        Keine Bestellhistorie verfügbar.
                       </div>
                     )}
                   </div>

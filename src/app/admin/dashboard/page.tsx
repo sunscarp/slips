@@ -416,7 +416,7 @@ export default function SalonDashboard() {
           // German: "{user} hat {service} für {date} gebucht"
           return {
             id: booking._id,
-            action: `hat ${serviceName} für ${booking.date} gebucht`,
+            action: `hat ${serviceName} angefragt`,
             timestamp: timeAgo,
             user: booking.customerName
           };
@@ -509,7 +509,7 @@ export default function SalonDashboard() {
             {/* Header */}
             <div className="mb-6 sm:mb-8 text-center">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                Willkommen zurück, {salon?.name || 'Saloninhaber'}
+                Willkommen zurück, {salon?.name || 'Verkäufer'}
                 {viewingSalonUid && isSystemAdmin && (
                   <span className="text-lg text-gray-600 block mt-1">(System-Ansicht)</span>
                 )}
@@ -518,7 +518,7 @@ export default function SalonDashboard() {
                 <span className="text-black text-lg font-mono">{currentTime}</span>
               </div>
               <p className="text-gray-600 text-sm sm:text-base">
-                Das passiert heute in Deinem Salon.
+                Dein Verkäufer-Dashboard
               </p>
             </div>
             {/* Stats Grid */}
@@ -531,7 +531,7 @@ export default function SalonDashboard() {
             <section className="mb-6 sm:mb-8">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center">
-                  <FiClock className="mr-2" /> Bestellungen heute
+                  <FiClock className="mr-2" /> Neueste Anfragen
                 </h2>
                 <span className="text-xs sm:text-sm text-gray-500">
                   {(() => {
@@ -573,7 +573,7 @@ export default function SalonDashboard() {
                                     onClick={() => handleBookingAction(booking.id, 'no-show')}
                                     className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-2 sm:px-3 py-1 rounded-md text-xs font-medium"
                                   >
-                                    Nicht erschienen
+                                    Ablehnen
                                   </button>
                                   <button
                                     onClick={() => handleBookingAction(booking.id, 'complete')}
@@ -599,7 +599,7 @@ export default function SalonDashboard() {
                       ) : (
                         <tr>
                           <td colSpan={4} className="px-2 sm:px-6 py-4 text-center text-xs sm:text-sm text-gray-500">
-                            Keine Bestellungen für heute geplant
+                            Keine neuen Anfragen
                           </td>
                         </tr>
                       )}
@@ -706,7 +706,7 @@ const AuthPrompt = () => (
   <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans px-2">
     <div className="text-center p-4 sm:p-6 bg-white rounded-lg shadow-sm max-w-md mx-2 sm:mx-4">
       <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Zugriff eingeschränkt</h2>
-      <p className="text-gray-600 mb-4 text-xs sm:text-base">Bitte melden Sie sich an, um das Salon-Dashboard zu sehen</p>
+      <p className="text-gray-600 mb-4 text-xs sm:text-base">Bitte melden Sie sich an, um das Verkäufer-Dashboard zu sehen</p>
       <button className="bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-md w-full sm:w-auto">
         Anmelden
       </button>
@@ -769,13 +769,13 @@ const CalendarWidget = ({ bookings, isExpanded, salon }: {
           {todayGermanDateStr}
         </h3>
         {isTodayHoliday ? (
-          <p className="text-sm text-red-700 font-medium">🏖️ Feiertag - Salon geschlossen</p>
+          <p className="text-sm text-red-700 font-medium">🏖️ Nicht verfügbar</p>
         ) : !canTakeBookingsToday ? (
-          <p className="text-sm text-gray-600 font-medium">❌ Salon heute geschlossen</p>
+          <p className="text-sm text-gray-600 font-medium">❌ Heute nicht verfügbar</p>
         ) : (
           <>
             <p className="text-sm text-blue-700 font-medium">
-              {todayBookings.length} Termin{todayBookings.length === 1 ? '' : 'e'} geplant
+              {todayBookings.length} Anfrage{todayBookings.length === 1 ? '' : 'n'}
             </p>
             {todayWorkingDay && (
               <p className="text-xs text-blue-600 mt-1">

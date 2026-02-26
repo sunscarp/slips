@@ -305,7 +305,7 @@ function AnalyticsContent() {
     const finishedCount =
       (statusCounts.completed || 0) +
       (statusCounts.cancelled || 0) +
-      (statusCounts["no-show"] || 0);
+      (statusCounts["rejected"] || 0);
 
     const completionRate = finishedCount > 0
       ? ((statusCounts.completed || 0) / finishedCount) * 100
@@ -314,7 +314,7 @@ function AnalyticsContent() {
       ? ((statusCounts.cancelled || 0) / finishedCount) * 100
       : 0;
     const noShowRate = finishedCount > 0
-      ? ((statusCounts["no-show"] || 0) / finishedCount) * 100
+      ? ((statusCounts["rejected"] || 0) / finishedCount) * 100
       : 0;
 
     // Customer retention: percent of customers who are returning
@@ -444,7 +444,7 @@ function AnalyticsContent() {
             </h1>
             <p className="text-gray-600">
               {viewingSalonUid && isSystemAdmin 
-                ? `Analytics für ${salon?.name || 'Unbekannter Salon'} (System-Ansicht)`
+                ? `Analytics für ${salon?.name || 'Unbekannter Verkäufer'} (System-Ansicht)`
                 : `Umfassende Einblicke und Analysen für ${salon?.name}`
               }
             </p>
@@ -482,21 +482,21 @@ function AnalyticsContent() {
                   change="+12%"
                 />
                 <MetricCard
-                  title="Gesamtbuchungen"
+                  title="Gesamt Bestellungen"
                   value={analytics.totalBookings.toString()}
                   icon={<FiCalendar size={24} color="#F5F5DC" />} // calendar icon
                   trend="up"
                   change="+8%"
                 />
                 <MetricCard
-                  title="Durchschn. Buchungswert"
+                  title="Durchschn. Bestellwert"
                   value={`€${analytics.averageBookingValue.toFixed(2)}`}
                   icon={<FiTrendingUp size={24} color="#F5F5DC" />} // trending up icon
                   trend="up"
                   change="+5%"
                 />
                 <MetricCard
-                  title="Kundenbindung"
+                  title="Käuferbindung"
                   value={`${analytics.customerRetentionRate.toFixed(1)}%`}
                   icon={<FiUserCheck size={24} color="#F5F5DC" />} // user check icon
                   trend="neutral"
@@ -518,7 +518,7 @@ function AnalyticsContent() {
                   trend={analytics.cancellationRate < 10 ? "up" : "down"}
                 />
                 <MetricCard
-                  title="No-Show-Rate"
+                  title="Ablehnungsrate"
                   value={`${analytics.noShowRate.toFixed(1)}%`}
                   icon={<FiTrendingDown size={24} color="#F5F5DC" />} // trending down icon
                   trend={analytics.noShowRate < 5 ? "up" : "down"}
@@ -529,7 +529,7 @@ function AnalyticsContent() {
                 {/* Popular Services */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiScissors className="mr-2 text-[#5C6F68]" /> Beliebteste Dienstleistungen
+                    <FiScissors className="mr-2 text-[#5C6F68]" /> Beliebteste Produkte
                   </h2>
                   <div className="space-y-4">
                     {analytics.popularServices.slice(0, 5).map((service, index) => (
@@ -540,7 +540,7 @@ function AnalyticsContent() {
                           </span>
                           <div>
                             <p className="font-medium text-gray-900">{service.name}</p>
-                            <p className="text-sm text-gray-500">{service.count} Buchungen</p>
+                            <p className="text-sm text-gray-500">{service.count} Bestellungen</p>
                           </div>
                         </div>
                         <span className="font-semibold text-[#5C6F68]">€{service.revenue}</span>
@@ -552,7 +552,7 @@ function AnalyticsContent() {
                 {/* Employee Performance */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiUsers className="mr-2 text-[#5C6F68]" /> Mitarbeiterleistung
+                    <FiUsers className="mr-2 text-[#5C6F68]" /> Top Käufer
                   </h2>
                   <div className="space-y-4">
                     {analytics.employeePerformance.map((employee, index) => (
@@ -563,7 +563,7 @@ function AnalyticsContent() {
                           </div>
                           <div>
                             <p className="font-medium text-gray-900">{employee.name}</p>
-                            <p className="text-sm text-gray-500">{employee.bookings} Buchungen • ⭐ {employee.rating.toFixed(1)}</p>
+                            <p className="text-sm text-gray-500">{employee.bookings} Bestellungen • ⭐ {employee.rating.toFixed(1)}</p>
                           </div>
                         </div>
                         <span className="font-semibold text-[#5C6F68]">€{employee.revenue}</span>
@@ -577,7 +577,7 @@ function AnalyticsContent() {
                 {/* Time Slot Demand */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiClock className="mr-2 text-[#5C6F68]" /> Nachgefragte Zeitfenster
+                    <FiClock className="mr-2 text-[#5C6F68]" /> Bestellzeitpunkte
                   </h2>
                   <div className="space-y-3">
                     {analytics.timeSlotDemand.slice(0, 8).map((slot) => (
@@ -602,7 +602,7 @@ function AnalyticsContent() {
                 {/* Service Type Breakdown */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiPieChart className="mr-2 text-[#5C6F68]" /> Dienstleistungs-Kategorien
+                    <FiPieChart className="mr-2 text-[#5C6F68]" /> Produkt-Kategorien
                   </h2>
                   <div className="space-y-4">
                     {analytics.serviceTypeBreakdown.map((type, index) => {
@@ -617,7 +617,7 @@ function AnalyticsContent() {
                             ></div>
                             <div>
                               <p className="font-medium text-gray-900">{type.type}</p>
-                              <p className="text-sm text-gray-500">{type.count} Dienstleistungen</p>
+                              <p className="text-sm text-gray-500">{type.count} Produkte</p>
                             </div>
                           </div>
                           <span className="font-semibold text-[#5C6F68]">€{type.revenue}</span>
@@ -649,7 +649,7 @@ function AnalyticsContent() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-medium text-gray-900">{day.bookings} Buchungen</div>
+                          <div className="text-sm font-medium text-gray-900">{day.bookings} Bestellungen</div>
                           <div className="text-xs text-gray-500">€{day.revenue}</div>
                         </div>
                       </div>
@@ -660,25 +660,25 @@ function AnalyticsContent() {
                 {/* Customer Insights */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiUserCheck className="mr-2 text-[#5C6F68]" /> Kunden-Insights
+                    <FiUserCheck className="mr-2 text-[#5C6F68]" /> Käufer-Insights
                   </h2>
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-gray-500">Neue Kunden</p>
+                        <p className="text-sm text-gray-500">Neue Käufer</p>
                         <p className="text-2xl font-bold text-[#5C6F68]">{analytics.customerInsights.newCustomers}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-gray-500">Wiederkehrende Kunden</p>
+                        <p className="text-sm text-gray-500">Wiederkehrende Käufer</p>
                         <p className="text-2xl font-bold text-[#9DBE8D]">{analytics.customerInsights.returningCustomers}</p>
                       </div>
                     </div>
                     <div className="border-t pt-4">
-                      <p className="text-sm text-gray-500">Durchschnittliche Buchungen pro Kunde</p>
+                      <p className="text-sm text-gray-500">Durchschn. Bestellungen pro Käufer</p>
                       <p className="text-xl font-semibold text-gray-900">{analytics.customerInsights.averageBookingsPerCustomer.toFixed(1)}</p>
                     </div>
                     <div className="border-t pt-4">
-                      <p className="text-sm text-gray-500">Kundenbindungsrate</p>
+                      <p className="text-sm text-gray-500">Käuferbindungsrate</p>
                       <p className="text-xl font-semibold text-gray-900">{analytics.customerRetentionRate.toFixed(1)}%</p>
                     </div>
                   </div>
@@ -688,7 +688,7 @@ function AnalyticsContent() {
               {/* Peak Hours Chart */}
               <div className="hidden lg:block bg-white p-6 rounded-lg shadow-sm">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                  <FiClock className="mr-2 text-[#5C6F68]" /> Spitzenzeiten
+                  <FiClock className="mr-2 text-[#5C6F68]" /> Bestell-Spitzenzeiten
                 </h2>
                 <div className="grid grid-cols-12 gap-2">
                   {Array.from({ length: 12 }, (_, i) => {
@@ -704,7 +704,7 @@ function AnalyticsContent() {
                           <div 
                             className="w-8 bg-[#5C6F68] rounded-t"
                             style={{ height: `${height}%`, minHeight: bookings > 0 ? '8px' : '0' }}
-                            title={`${hour}:00 - ${bookings} Buchungen`}
+                            title={`${hour}:00 - ${bookings} Bestellungen`}
                           ></div>
                         </div>
                         <div className="text-xs text-gray-600">{hour}:00</div>
@@ -777,7 +777,7 @@ const AuthPrompt = () => (
   <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
     <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">
       <h2 className="text-xl font-semibold text-gray-900 mb-2">Zugriff eingeschränkt</h2>
-      <p className="text-gray-600 mb-4">Bitte melden Sie sich an, um das Analyse-Dashboard zu sehen</p>
+      <p className="text-gray-600 mb-4">Bitte melde dich an, um das Analyse-Dashboard zu sehen</p>
       <button className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-medium py-2 px-4 rounded-md">
         Anmelden
       </button>

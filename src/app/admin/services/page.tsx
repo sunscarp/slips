@@ -68,11 +68,11 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
     e.preventDefault();
     const price = Number(form.price || 0);
     if (!form.name || price <= 0) {
-      alert("Bitte geben Sie einen Namen und einen gültigen Preis an.");
+      alert("Bitte gib einen Namen und einen gültigen Preis an.");
       return;
     }
     if (!form.imageUrl) {
-      alert("Bitte fügen Sie ein Bild für das Produkt hinzu (erforderlich).");
+      alert("Bitte füge ein Bild für das Produkt hinzu (erforderlich).");
       return;
     }
     await onSave({
@@ -104,7 +104,7 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
       </h2>
       {/* Service Type Dropdown */}
       <div>
-        <label className="block text-sm font-medium text-black">Dienstleistungsart*</label>
+        <label className="block text-sm font-medium text-black">Produktkategorie*</label>
         <select
           name="serviceType"
           value={form.serviceType}
@@ -112,7 +112,7 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
           required
           className="select select-bordered w-full mt-1 font-inter text-black border-gray-200 border-2 rounded-lg bg-gray-50 shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all duration-200 py-2 text-base px-4"
         >
-          <option value="">Art auswählen</option>
+          <option value="">Kategorie auswählen</option>
           {serviceTypes.map((type) => (
             <option key={type} value={type}>{type}</option>
           ))}
@@ -156,7 +156,7 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
       <div>
         <label className="block text-sm font-medium text-black mb-2">Produktbild*</label>
         <div className="flex items-center gap-3">
-          <input type="file" accept="image/*" onChange={handleImageChange} ref={(el) => fileInputRef.current = el as HTMLInputElement | null} className="hidden" />
+          <input type="file" accept="image/*" onChange={handleImageChange} ref={(el: HTMLInputElement | null) => { fileInputRef.current = el; }} className="hidden" />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -442,7 +442,7 @@ export default function ServicesPage() {
               )}
             </h1>
             <p className="text-black text-base sm:text-lg font-inter">
-              Fügen Sie Produkte hinzu, bearbeiten oder entfernen Sie sie aus Ihrem Sortiment.
+              Füge Produkte hinzu, bearbeite oder entferne sie aus deinem Sortiment.
             </p>
           </div>
           {/* Stats Grid */}
@@ -495,11 +495,11 @@ export default function ServicesPage() {
                     </div>
                     {expandedEmployeeIdx === idx && (
                       <div className="mt-4">
-                        <div className="mb-3 font-semibold text-black font-inter">Zugeordnete Dienstleistungen</div>
+                        <div className="mb-3 font-semibold text-black font-inter">Zugeordnete Produkte</div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {services.length === 0 ? (
                             <div className="text-black text-sm font-inter">
-                              Keine Dienstleistungen verfügbar. Erstellen Sie zuerst welche.
+                              Keine Produkte verfügbar. Erstelle zuerst welche.
                             </div>
                           ) : (
                             services.map(service => (
@@ -591,7 +591,7 @@ export default function ServicesPage() {
               <div className="grid grid-cols-1 gap-6">
                 {filteredServices.length === 0 && (
                   <div className="col-span-full text-center text-black py-8 bg-white rounded-lg shadow-sm font-inter">
-                    Keine Produkte gefunden. Klicken Sie auf <span className="inline-flex items-center gap-1 font-semibold"><FiPlus /> Hinzufügen</span>, um eines zu erstellen.
+                    Keine Produkte gefunden. Klicke auf <span className="inline-flex items-center gap-1 font-semibold"><FiPlus /> Hinzufügen</span>, um eines zu erstellen.
                   </div>
                 )}
                 {filteredServices.map((s) => (

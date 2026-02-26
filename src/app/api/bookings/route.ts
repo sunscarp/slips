@@ -4,58 +4,79 @@ import { MongoClient, ObjectId } from "mongodb";
 const uri = process.env.MONGODB_URI as string;
 const dbName = process.env.MONGODB_DB;
 
+// Purchase Request API (formerly Booking)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { salonId, salonUid, customerUid, services, date, time, total, customerName, customerPhone, customerGender, status = 'confirmed' } = body;
+    const {
+      sellerId, salonId,
+      sellerUid, salonUid,
+      items, services,
+      total,
+      buyerName, customerName,
+      buyerEmail,
+      buyerUid,
+      shippingAddress,
+      specialNeeds,
+      status = 'pending'
+    } = body;
 
-    // Validation
-    if (!salonId || !salonUid || !customerUid || !services || !date || !time || total === undefined || !customerName || !customerPhone) {
-      return NextResponse.json({ error: "Missing required booking information" }, { status: 400 });
+    const finalSellerId = sellerId || salonId;
+    const finalSellerUid = sellerUid || salonUid;
+    const finalItems = items || services;
+    const finalBuyerName = buyerName || customerName;
+
+    if (!finalSellerId || !finalSellerUid || !finalItems || total === undefined || !finalBuyerName || !buyerEmail) {
+      return NextResponse.json({ error: "Missing required purchase request information (sellerId, sellerUid, items, total, buyerName, buyerEmail)" }, { status: 400 });
     }
 
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
     const collection = db.collection("bookings");
 
-    const booking = {
-      salonId: new ObjectId(salonId),
-      salonUid,
-      customerUid, // Add customer UID to booking document
-      services, // each service now includes employee field
-      date,
-      time,
+    const purchaseRequest = {
+      sellerId: new ObjectId(finalSellerId),
+      sellerUid: finalSellerUid,
+      // Backward compat fields
+      salonId: new ObjectId(finalSellerId),
+      salonUid: finalSellerUid,
+      items: finalItems,
+      services: finalItems,
       total: Number(total),
-      customerName,
-      customerPhone,
-      customerGender: customerGender || null,
-      status,
+      buyerName: finalBuyerName,
+      customerName: finalBuyerName,
+      buyerEmail: buyerEmail ? buyerEmail.toLowerCase().trim() : '',
+      buyerUid: buyerUid || '',
+      shippingAddress: shippingAddress || null,
+      specialNeeds: specialNeeds || "",
+      status, // pending, accepted, payment_pending, shipped, completed, rejected, cancelled
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    const result = await collection.insertOne(booking);
+    const result = await collection.insertOne(purchaseRequest);
     await client.close();
 
     return NextResponse.json({
       ok: true,
+      requestId: result.insertedId.toString(),
       bookingId: result.insertedId.toString(),
-      booking
+      purchaseRequest
     });
   } catch (error) {
-    console.error('Booking creation error:', error);
-    return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
+    console.error('Purchase request creation error:', error);
+    return NextResponse.json({ error: "Failed to create purchase request" }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const salonUid = searchParams.get("salonUid");
+    const sellerUid = searchParams.get("salonUid") || searchParams.get("sellerUid");
+    const buyerEmail = searchParams.get("buyerEmail");
+    const buyerUid = searchParams.get("buyerUid");
     const customerUid = searchParams.get("customerUid");
-    const bookingId = searchParams.get("bookingId");
-    const date = searchParams.get("date");
-    const employee = searchParams.get("employee");
+    const requestId = searchParams.get("bookingId") || searchParams.get("requestId");
     const isSystemAdmin = searchParams.get("systemAdmin") === "true";
 
     const client = await MongoClient.connect(uri);
@@ -64,66 +85,64 @@ export async function GET(req: NextRequest) {
 
     let query: any = {};
 
-    if (bookingId) {
-      query._id = new ObjectId(bookingId);
+    if (requestId) {
+      query._id = new ObjectId(requestId);
     } else if (isSystemAdmin) {
-      // System admin can see all bookings across all salons
-      // No restrictions applied
+      // System admin can see all purchase requests
     } else {
-      if (salonUid) query.salonUid = salonUid;
-      if (customerUid) query.customerUid = customerUid;
-      if (date) query.date = date;
-      if (employee) {
-        // Only look for bookings where any service is assigned to this employee
-        query["services.employee"] = employee;
+      if (sellerUid) {
+        query.$or = [{ sellerUid }, { salonUid: sellerUid }];
       }
+      if (buyerUid) query.buyerUid = buyerUid;
+      if (buyerEmail) query.buyerEmail = buyerEmail.toLowerCase().trim();
+      if (customerUid) query.customerUid = customerUid;
     }
 
-    const bookings = await collection.find(query).toArray();
+    const requests = await collection.find(query).sort({ createdAt: -1 }).toArray();
 
-    // If system admin, also fetch salon names for better display
-    if (isSystemAdmin && bookings.length > 0) {
-      const salonsCollection = db.collection("salons");
-      const salonUids = [...new Set(bookings.map(b => b.salonUid))];
-      const salons = await salonsCollection.find(
-        { uid: { $in: salonUids } },
+    if (isSystemAdmin && requests.length > 0) {
+      const sellersCollection = db.collection("salons");
+      const sellerUids = [...new Set(requests.map(b => b.sellerUid || b.salonUid))];
+      const sellers = await sellersCollection.find(
+        { uid: { $in: sellerUids } },
         { projection: { uid: 1, name: 1, email: 1 } }
       ).toArray();
 
-      const salonMap = Object.fromEntries(salons.map(s => [s.uid, s]));
+      const sellerMap = Object.fromEntries(sellers.map(s => [s.uid, s]));
 
-      // Enrich bookings with salon info
-      const enrichedBookings = bookings.map(booking => ({
-        ...booking,
-        salonInfo: salonMap[booking.salonUid] || null
+      const enrichedRequests = requests.map(request => ({
+        ...request,
+        sellerInfo: sellerMap[request.sellerUid || request.salonUid] || null,
+        salonInfo: sellerMap[request.sellerUid || request.salonUid] || null,
       }));
 
       await client.close();
-      return NextResponse.json({ bookings: enrichedBookings });
+      return NextResponse.json({ bookings: enrichedRequests });
     }
 
     await client.close();
-    return NextResponse.json({ bookings });
+    return NextResponse.json({ bookings: requests });
   } catch (error) {
-    console.error('Booking fetch error:', error);
-    return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
+    console.error('Purchase request fetch error:', error);
+    return NextResponse.json({ error: "Failed to fetch purchase requests" }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { bookingId, status, ...updateData } = body;
+    const { bookingId, requestId, status, ...updateData } = body;
+    const id = requestId || bookingId;
 
-    if (!bookingId) {
-      return NextResponse.json({ error: "Booking ID is required" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: "Request ID is required" }, { status: 400 });
     }
 
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
     const collection = db.collection("bookings");
 
-    const updateFields = {
+    const updateFields: any = {
       ...updateData,
       updatedAt: new Date().toISOString()
     };
@@ -133,46 +152,46 @@ export async function PUT(req: NextRequest) {
     }
 
     const result = await collection.updateOne(
-      { _id: new ObjectId(bookingId) },
+      { _id: new ObjectId(id) },
       { $set: updateFields }
     );
 
     await client.close();
 
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+      return NextResponse.json({ error: "Purchase request not found" }, { status: 404 });
     }
 
     return NextResponse.json({ ok: true, updated: result.modifiedCount > 0 });
   } catch (error) {
-    console.error('Booking update error:', error);
-    return NextResponse.json({ error: "Failed to update booking" }, { status: 500 });
+    console.error('Purchase request update error:', error);
+    return NextResponse.json({ error: "Failed to update purchase request" }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const bookingId = searchParams.get("bookingId");
+    const id = searchParams.get("bookingId") || searchParams.get("requestId");
 
-    if (!bookingId) {
-      return NextResponse.json({ error: "Booking ID is required" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: "Request ID is required" }, { status: 400 });
     }
 
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
     const collection = db.collection("bookings");
 
-    const result = await collection.deleteOne({ _id: new ObjectId(bookingId) });
+    const result = await collection.deleteOne({ _id: new ObjectId(id) });
     await client.close();
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+      return NextResponse.json({ error: "Purchase request not found" }, { status: 404 });
     }
 
     return NextResponse.json({ ok: true, deleted: true });
   } catch (error) {
-    console.error('Booking deletion error:', error);
-    return NextResponse.json({ error: "Failed to delete booking" }, { status: 500 });
+    console.error('Purchase request deletion error:', error);
+    return NextResponse.json({ error: "Failed to delete purchase request" }, { status: 500 });
   }
 }

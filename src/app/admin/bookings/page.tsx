@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
-import { FiCalendar, FiClock, FiUser, FiScissors, FiPhone, FiMapPin, FiFilter, FiSearch } from "react-icons/fi";
+import { FiCalendar, FiUser, FiScissors, FiFilter, FiSearch } from "react-icons/fi";
 
 // Constants
 const COLORS = {
@@ -21,26 +21,42 @@ type Booking = {
   _id: string;
   salonId: string;
   salonUid: string;
-  customerUid: string;
+  sellerUid?: string;
+  buyerName?: string;
+  customerName?: string;
+  buyerEmail?: string;
+  customerUid?: string;
   services: {
     id: string;
     name: string;
     price: number;
-    duration: number;
-    employee: string;
+    duration?: number;
+    employee?: string;
   }[];
-  date: string;
-  time: string;
+  items?: {
+    id: string;
+    name: string;
+    price: number;
+  }[];
+  date?: string;
+  time?: string;
   total: number;
-  customerName: string;
-  customerPhone: string;
+  customerPhone?: string;
   status: string;
+  specialNeeds?: string;
   createdAt: string;
   updatedAt: string;
   customerAddress?: {
     street: string;
     number: string;
     zip: string;
+    country: string;
+  };
+  shippingAddress?: {
+    street: string;
+    number: string;
+    zip: string;
+    city: string;
     country: string;
   };
 };
@@ -147,11 +163,9 @@ export default function AdminBookingsPage() {
       const data = await res.json();
       
       if (data.bookings) {
-        // Sort bookings by date and time (most recent first)
+        // Sort bookings by createdAt (most recent first)
         const sortedBookings = data.bookings.sort((a: Booking, b: Booking) => {
-          const dateTimeA = new Date(`${a.date}T${a.time}`);
-          const dateTimeB = new Date(`${b.date}T${b.time}`);
-          return dateTimeB.getTime() - dateTimeA.getTime();
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
         
         setBookings(sortedBookings);
@@ -168,14 +182,15 @@ export default function AdminBookingsPage() {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(booking =>
-        booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.customerPhone.includes(searchTerm) ||
-        booking.services.some(service => 
-          service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          service.employee.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(booking => {
+        const name = (booking.buyerName || booking.customerName || '').toLowerCase();
+        const email = (booking.buyerEmail || '').toLowerCase();
+        const items = booking.items || booking.services || [];
+        return name.includes(term) ||
+          email.includes(term) ||
+          items.some(item => item.name.toLowerCase().includes(term));
+      });
     }
 
     // Status filter
@@ -190,16 +205,18 @@ export default function AdminBookingsPage() {
       
       switch (dateFilter) {
         case "today":
-          filtered = filtered.filter(booking => booking.date === todayStr);
+          filtered = filtered.filter(booking => (booking.createdAt || '').slice(0, 10) === todayStr);
           break;
-        case "week":
+        case "week": {
           const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-          filtered = filtered.filter(booking => new Date(booking.date) >= weekAgo);
+          filtered = filtered.filter(booking => new Date(booking.createdAt) >= weekAgo);
           break;
-        case "month":
+        }
+        case "month": {
           const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-          filtered = filtered.filter(booking => new Date(booking.date) >= monthAgo);
+          filtered = filtered.filter(booking => new Date(booking.createdAt) >= monthAgo);
           break;
+        }
       }
     }
 
@@ -209,28 +226,17 @@ export default function AdminBookingsPage() {
   // Sort bookings by selected sort option
   useEffect(() => {
     let sorted = [...bookings];
-    const now = new Date();
     if (sortBy === "next") {
-      sorted.sort((a, b) => {
-        const aDate = new Date(`${a.date}T${a.time}`);
-        const bDate = new Date(`${b.date}T${b.time}`);
-        // Next booking first (future bookings ascending)
-        return aDate.getTime() - bDate.getTime();
-      });
+      sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     } else if (sortBy === "recent") {
-      sorted.sort((a, b) => {
-        const aDate = new Date(`${a.date}T${a.time}`);
-        const bDate = new Date(`${b.date}T${b.time}`);
-        // Most recent first (descending)
-        return bDate.getTime() - aDate.getTime();
-      });
+      sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else if (sortBy === "customer") {
-      sorted.sort((a, b) => a.customerName.localeCompare(b.customerName));
+      sorted.sort((a, b) => (a.buyerName || a.customerName || '').localeCompare(b.buyerName || b.customerName || ''));
     }
     setFilteredBookings(sorted);
   }, [bookings, sortBy]);
 
-  const handleBookingAction = async (id: string, action: 'confirmed' | 'completed' | 'cancelled' | 'no-show') => {
+  const handleBookingAction = async (id: string, action: 'pending' | 'accepted' | 'payment_pending' | 'shipped' | 'completed' | 'rejected' | 'cancelled') => {
     try {
       const res = await fetch('/api/bookings', {
         method: 'PUT',
@@ -250,7 +256,7 @@ export default function AdminBookingsPage() {
         );
         
         // If booking is completed, cancelled, or no-show, move to history
-        if (action === 'completed' || action === 'cancelled' || action === 'no-show') {
+        if (['completed', 'shipped', 'cancelled', 'rejected'].includes(action)) {
           // Update filtered bookings to remove from current view if showing upcoming
           if (!showHistory) {
             setFilteredBookings(prev => prev.filter(booking => booking._id !== id));
@@ -274,11 +280,29 @@ export default function AdminBookingsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'pending': return '#f59e0b';
+      case 'accepted': return '#9DBE8D';
+      case 'payment_pending': return '#3b82f6';
+      case 'shipped': return '#8b5cf6';
+      case 'completed': return '#22c55e';
+      case 'rejected': return '#ef4444';
+      case 'cancelled': return '#6b7280';
       case 'confirmed': return '#9DBE8D';
-      case 'cancelled': return '#ef4444';
-      case 'completed': return '#659ffdff';
-      case 'no-show': return '#f59e0b';
       default: return '#6b7280';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Ausstehend';
+      case 'accepted': return 'Angenommen';
+      case 'payment_pending': return 'Zahlung ausstehend';
+      case 'shipped': return 'Versendet';
+      case 'completed': return 'Abgeschlossen';
+      case 'rejected': return 'Abgelehnt';
+      case 'cancelled': return 'Storniert';
+      case 'confirmed': return 'Angenommen';
+      default: return status;
     }
   };
 
@@ -293,10 +317,10 @@ export default function AdminBookingsPage() {
           .slice(0, 6);
         const recentActivities = recentBookings.map((booking: any) => {
           const timeAgo = getTimeAgo(new Date(booking.createdAt));
-          const serviceName = booking.services[0]?.name || 'Dienstleistung';
+          const serviceName = (booking.items || booking.services)?.[0]?.name || 'Produkt';
           return {
             id: booking._id,
-            action: `hat ${serviceName} für ${booking.date} gebucht`,
+            action: `hat ${serviceName} angefragt`,
             timestamp: timeAgo,
             user: booking.customerName
           };
@@ -335,23 +359,19 @@ export default function AdminBookingsPage() {
   const exportHistoryCSV = () => {
     if (!historyBookings.length) return;
     const headers = [
-      "Datum", "Uhrzeit", "Kunde", "Telefon", "Adresse", "Dienstleistungen", "Mitarbeiter", "Dauer", "Status", "Gesamt"
+      "Datum", "Käufer", "E-Mail", "Produkte", "Status", "Gesamt"
     ];
-    const rows = historyBookings.map(b => [
-      b.date,
-      b.time,
-      b.customerName,
-      b.customerPhone,
-      // Include address if salon has storeCustomerAddress enabled and address is present
-      salon?.storeCustomerAddress && b.customerAddress
-        ? `${b.customerAddress.street} ${b.customerAddress.number}, ${b.customerAddress.zip} ${b.customerAddress.country}`
-        : "",
-      b.services.map(s => s.name).join(", "),
-      b.services.map(s => s.employee).join(", "),
-      b.services.reduce((sum, s) => sum + (s.duration || 0), 0), // total duration in minutes
-      b.status,
-      b.total
-    ]);
+    const rows = historyBookings.map(b => {
+      const items = b.items || b.services || [];
+      return [
+        new Date(b.createdAt).toLocaleDateString('de-DE'),
+        b.buyerName || b.customerName || '',
+        b.buyerEmail || '',
+        items.map(s => s.name).join(", "),
+        b.status,
+        b.total
+      ];
+    });
     const csvContent =
       [headers, ...rows]
         .map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
@@ -360,7 +380,7 @@ export default function AdminBookingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "buchungshistorie.csv";
+    a.download = "anfragen_historie.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -389,12 +409,11 @@ export default function AdminBookingsPage() {
 
   // Split bookings into upcoming and history
   // Only show 'confirmed' bookings in upcoming, others in history
-  const todayStr = new Date().toISOString().split('T')[0];
   const upcomingBookings = filteredBookings.filter(
-    b => b.date >= todayStr && b.status === 'confirmed'
+    b => ['pending', 'accepted', 'payment_pending'].includes(b.status)
   );
   const historyBookings = filteredBookings.filter(
-    b => b.status !== 'confirmed'
+    b => ['completed', 'shipped', 'rejected', 'cancelled'].includes(b.status)
   );
 
   return (
@@ -413,13 +432,13 @@ export default function AdminBookingsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
-                  <FiCalendar className="mr-3 text-[#5C6F68]" /> Alle Buchungen
+                  <FiCalendar className="mr-3 text-[#5C6F68]" /> Alle Anfragen
                   {viewingSalonUid && isSystemAdmin && (
                     <span className="text-lg text-gray-600 block mt-1 ml-0">(System-Ansicht für {salon?.name})</span>
                   )}
                 </h1>
                 <p className="text-gray-600">
-                  Verwalten und sehen Sie alle Ihre Salonbuchungen
+                  Verwalten Sie alle Kaufanfragen
                 </p>
               </div>
               {/* Letzte Aktivitäten Button */}
@@ -481,7 +500,7 @@ export default function AdminBookingsPage() {
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Suche Kunden, Dienstleistungen oder Mitarbeiter..."
+                  placeholder="Suche Käufer oder Produkte..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent"
@@ -497,10 +516,13 @@ export default function AdminBookingsPage() {
                   style={{ color: "#000" }}
                 >
                   <option value="all">Alle Status</option>
-                  <option value="confirmed">Bestätigt</option>
+                  <option value="pending">Ausstehend</option>
+                  <option value="accepted">Angenommen</option>
+                  <option value="payment_pending">Zahlung ausstehend</option>
+                  <option value="shipped">Versendet</option>
                   <option value="completed">Abgeschlossen</option>
+                  <option value="rejected">Abgelehnt</option>
                   <option value="cancelled">Storniert</option>
-                  <option value="no-show">Nicht erschienen</option>
                 </select>
               </div>
               {/* Date Filter */}
@@ -525,7 +547,7 @@ export default function AdminBookingsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent"
                   style={{ color: "#000" }}
                 >
-                  <option value="next">Sortieren nach nächster Buchung</option>
+                  <option value="next">Sortieren nach neuester Anfrage</option>
                   <option value="recent">Sortieren nach zuletzt</option>
                   <option value="customer">Sortieren nach Kundenname</option>
                 </select>
@@ -536,7 +558,7 @@ export default function AdminBookingsPage() {
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${showHistory ? "bg-[#5C6F68] text-white" : "bg-gray-200 text-gray-700"}`}
                 onClick={() => setShowHistory(v => !v)}
               >
-                {showHistory ? "Zeige bevorstehende Buchungen" : "Zeige Buchungshistorie"}
+                {showHistory ? "Zeige offene Anfragen" : "Zeige Anfrage-Historie"}
               </button>
             </div>
           </div>
@@ -546,60 +568,65 @@ export default function AdminBookingsPage() {
             {/* Upcoming Bookings */}
             {!showHistory && (
               upcomingBookings.length > 0 ? (
-                upcomingBookings.map((booking) => (
+                upcomingBookings.map((booking) => {
+                  const items = booking.items || booking.services || [];
+                  return (
                   <div key={booking._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
                           <h3 className="text-base font-semibold text-gray-900 flex items-center">
                             <FiUser className="w-4 h-4 mr-2 text-[#5C6F68]" />
-                            {booking.customerName}
+                            {booking.buyerName || booking.customerName}
                           </h3>
                           <span
                             className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
                             style={{ backgroundColor: getStatusColor(booking.status) }}
                           >
-                            {booking.status === 'confirmed' && 'Bestätigt'}
-                            {booking.status === 'completed' && 'Abgeschlossen'}
-                            {booking.status === 'cancelled' && 'Storniert'}
-                            {booking.status === 'no-show' && 'Nicht erschienen'}
-                            {!['confirmed', 'completed', 'cancelled', 'no-show'].includes(booking.status) && booking.status}
+                            {getStatusLabel(booking.status)}
                           </span>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600 mb-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-600 mb-2">
                           <div className="flex items-center">
                             <FiCalendar className="w-4 h-4 mr-1 text-[#5C6F68]" />
-                            {formatDate(booking.date)}
+                            {formatDate(booking.createdAt)}
                           </div>
-                          <div className="flex items-center">
-                            <FiClock className="w-4 h-4 mr-1 text-[#5C6F68]" />
-                            {booking.time}
-                          </div>
-                          <div className="flex items-center">
-                            <FiPhone className="w-4 h-4 mr-1 text-[#5C6F68]" />
-                            {booking.customerPhone}
-                          </div>
+                          {booking.buyerEmail && (
+                            <div className="flex items-center">
+                              <FiUser className="w-4 h-4 mr-1 text-[#5C6F68]" />
+                              {booking.buyerEmail}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Services */}
+                    {/* Special needs */}
+                    {booking.specialNeeds && (
+                      <div className="bg-gray-50 rounded-lg p-2 mb-2 text-xs text-gray-700">
+                        <span className="font-medium">Besondere Wünsche:</span> {booking.specialNeeds}
+                      </div>
+                    )}
+
+                    {/* Shipping address */}
+                    {booking.shippingAddress && (
+                      <div className="bg-blue-50 rounded-lg p-2 mb-2 text-xs text-gray-700">
+                        <span className="font-medium">Lieferadresse:</span> {booking.shippingAddress.street} {booking.shippingAddress.number}, {booking.shippingAddress.zip} {booking.shippingAddress.city}, {booking.shippingAddress.country}
+                      </div>
+                    )}
+
+                    {/* Products */}
                     <div className="border-t border-gray-200 pt-2 mb-2">
                       <h4 className="font-medium text-gray-900 mb-1 flex items-center text-sm">
                         <FiScissors className="w-4 h-4 mr-1 text-[#9DBE8D]" />
-                        Dienstleistungen
+                        Produkte
                       </h4>
-                      <div className={booking.services.length > 1 ? "flex flex-col gap-1" : "grid grid-cols-1 md:grid-cols-2 gap-1"}>
-                        {booking.services.map((service, index) => (
+                      <div className={items.length > 1 ? "flex flex-col gap-1" : "grid grid-cols-1 md:grid-cols-2 gap-1"}>
+                        {items.map((item, index) => (
                           <div key={index} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                            <div>
-                              <span className="font-medium text-gray-900 text-sm">{service.name}</span>
-                              <div className="text-xs text-gray-500">
-                                {service.employee} • {service.duration} Minuten
-                              </div>
-                            </div>
-                            <span className="font-medium text-[#5C6F68] text-sm">€{service.price}</span>
+                            <span className="font-medium text-gray-900 text-sm">{item.name}</span>
+                            <span className="font-medium text-[#5C6F68] text-sm">€{item.price}</span>
                           </div>
                         ))}
                       </div>
@@ -611,19 +638,29 @@ export default function AdminBookingsPage() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-1">
-                      {booking.status === 'confirmed' && (
+                      {booking.status === 'pending' && (
                         <>
                           <button
-                            onClick={() => handleBookingAction(booking._id, 'completed')}
+                            onClick={() => handleBookingAction(booking._id, 'accepted')}
                             className="bg-green-50 text-green-700 hover:bg-green-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
                           >
-                            Als abgeschlossen markieren
+                            Annehmen
                           </button>
                           <button
-                            onClick={() => handleBookingAction(booking._id, 'no-show')}
-                            className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
+                            onClick={() => handleBookingAction(booking._id, 'rejected')}
+                            className="bg-red-50 text-red-700 hover:bg-red-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
                           >
-                            Als nicht erschienen markieren
+                            Ablehnen
+                          </button>
+                        </>
+                      )}
+                      {booking.status === 'accepted' && (
+                        <>
+                          <button
+                            onClick={() => handleBookingAction(booking._id, 'shipped')}
+                            className="bg-purple-50 text-purple-700 hover:bg-purple-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
+                          >
+                            Als versendet markieren
                           </button>
                           <button
                             onClick={() => handleBookingAction(booking._id, 'cancelled')}
@@ -633,21 +670,30 @@ export default function AdminBookingsPage() {
                           </button>
                         </>
                       )}
-                      {booking.status !== 'confirmed' && booking.status !== 'completed' && (
-                        <button
-                          onClick={() => handleBookingAction(booking._id, 'confirmed')}
-                          className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
-                        >
-                          Wiederherstellen
-                        </button>
+                      {booking.status === 'payment_pending' && (
+                        <>
+                          <button
+                            onClick={() => handleBookingAction(booking._id, 'shipped')}
+                            className="bg-purple-50 text-purple-700 hover:bg-purple-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
+                          >
+                            Als versendet markieren
+                          </button>
+                          <button
+                            onClick={() => handleBookingAction(booking._id, 'cancelled')}
+                            className="bg-red-50 text-red-700 hover:bg-red-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
+                          >
+                            Stornieren
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-16 bg-white rounded-lg">
                   <FiCalendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">Keine bevorstehenden Buchungen gefunden</h3>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">Keine offenen Anfragen</h3>
                   <p className="text-gray-600">
                     {searchTerm || statusFilter !== "all" || dateFilter !== "all" 
                       ? "Versuchen Sie, Ihre Filter anzupassen, um mehr Buchungen zu sehen."
@@ -663,7 +709,7 @@ export default function AdminBookingsPage() {
               bookingHistoryDisabled ? (
                 <div className="text-center py-16 bg-white rounded-lg">
                   <FiCalendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">Buchungshistorie deaktiviert</h3>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">Anfrage-Historie deaktiviert</h3>
                   <p className="text-gray-600">
                     Die Anzeige der Buchungshistorie ist für diesen Salon deaktiviert.
                   </p>
@@ -676,72 +722,68 @@ export default function AdminBookingsPage() {
                       className="bg-[#5C6F68] text-white px-3 py-1 rounded-md text-xs font-medium hover:bg-[#4a5a54] transition"
                       type="button"
                     >
-                      Export als CSV
+                      CSV Export
                     </button>
                   </div>
-                  {historyBookings.map((booking) => (
+                  {historyBookings.map((booking) => {
+                    const items = booking.items || booking.services || [];
+                    return (
                     <div key={booking._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-1">
                             <h3 className="text-base font-semibold text-gray-900 flex items-center">
                               <FiUser className="w-4 h-4 mr-2 text-[#5C6F68]" />
-                              {booking.customerName}
+                              {booking.buyerName || booking.customerName}
                             </h3>
                             <span
                               className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
                               style={{ backgroundColor: getStatusColor(booking.status) }}
                             >
-                              {booking.status === 'confirmed' && 'Bestätigt'}
-                              {booking.status === 'completed' && 'Abgeschlossen'}
-                              {booking.status === 'cancelled' && 'Storniert'}
-                              {booking.status === 'no-show' && 'Nicht erschienen'}
-                              {!['confirmed', 'completed', 'cancelled', 'no-show'].includes(booking.status) && booking.status}
+                              {getStatusLabel(booking.status)}
                             </span>
                           </div>
                           
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600 mb-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-600 mb-2">
                             <div className="flex items-center">
                               <FiCalendar className="w-4 h-4 mr-1 text-[#5C6F68]" />
-                              {formatDate(booking.date)}
+                              {formatDate(booking.createdAt)}
                             </div>
-                            <div className="flex items-center">
-                              <FiClock className="w-4 h-4 mr-1 text-[#5C6F68]" />
-                              {booking.time}
-                            </div>
-                            <div className="flex items-center">
-                              <FiPhone className="w-4 h-4 mr-1 text-[#5C6F68]" />
-                              {booking.customerPhone}
-                            </div>
-                            {/* Show address if salon allows and address is present */}
-                            {salon?.storeCustomerAddress && booking.customerAddress && (
-                              <div className="flex items-center md:col-span-3">
-                                <FiMapPin className="w-4 h-4 mr-1 text-[#5C6F68]" />
-                                <span className="text-xs">
-                                  {booking.customerAddress.street} {booking.customerAddress.number}, {booking.customerAddress.zip} {booking.customerAddress.country}
-                                </span>
+                            {booking.buyerEmail && (
+                              <div className="flex items-center">
+                                <FiUser className="w-4 h-4 mr-1 text-[#5C6F68]" />
+                                {booking.buyerEmail}
                               </div>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Services */}
+                      {/* Special needs */}
+                      {booking.specialNeeds && (
+                        <div className="bg-gray-50 rounded-lg p-2 mb-2 text-xs text-gray-700">
+                          <span className="font-medium">Besondere Wünsche:</span> {booking.specialNeeds}
+                        </div>
+                      )}
+
+                      {/* Shipping address */}
+                      {booking.shippingAddress && (
+                        <div className="bg-blue-50 rounded-lg p-2 mb-2 text-xs text-gray-700">
+                          <span className="font-medium">Lieferadresse:</span> {booking.shippingAddress.street} {booking.shippingAddress.number}, {booking.shippingAddress.zip} {booking.shippingAddress.city}, {booking.shippingAddress.country}
+                        </div>
+                      )}
+
+                      {/* Products */}
                       <div className="border-t border-gray-200 pt-2 mb-2">
                         <h4 className="font-medium text-gray-900 mb-1 flex items-center text-sm">
                           <FiScissors className="w-4 h-4 mr-1 text-[#9DBE8D]" />
-                          Dienstleistungen
+                          Produkte
                         </h4>
-                        <div className={booking.services.length > 1 ? "flex flex-col gap-1" : "grid grid-cols-1 md:grid-cols-2 gap-1"}>
-                          {booking.services.map((service, index) => (
+                        <div className={items.length > 1 ? "flex flex-col gap-1" : "grid grid-cols-1 md:grid-cols-2 gap-1"}>
+                          {items.map((item, index) => (
                             <div key={index} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                              <div>
-                                <span className="font-medium text-gray-900 text-sm">{service.name}</span>
-                                <div className="text-xs text-gray-500">
-                                  {service.employee} • {service.duration} Minuten
-                                </div>
-                              </div>
-                              <span className="font-medium text-[#5C6F68] text-sm">€{service.price}</span>
+                              <span className="font-medium text-gray-900 text-sm">{item.name}</span>
+                              <span className="font-medium text-[#5C6F68] text-sm">€{item.price}</span>
                             </div>
                           ))}
                         </div>
@@ -753,44 +795,31 @@ export default function AdminBookingsPage() {
 
                       {/* Actions */}
                       <div className="flex flex-wrap gap-1">
-                        {booking.status === 'confirmed' && (
-                          <>
-                            <button
-                              onClick={() => handleBookingAction(booking._id, 'completed')}
-                              className="bg-green-50 text-green-700 hover:bg-green-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
-                            >
-                              Als abgeschlossen markieren
-                            </button>
-                            <button
-                              onClick={() => handleBookingAction(booking._id, 'no-show')}
-                              className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
-                            >
-                              Als nicht erschienen markieren
-                            </button>
-                            <button
-                              onClick={() => handleBookingAction(booking._id, 'cancelled')}
-                              className="bg-red-50 text-red-700 hover:bg-red-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
-                            >
-                              Stornieren
-                            </button>
-                          </>
-                        )}
-                        {booking.status !== 'confirmed' && booking.status !== 'completed' && (
+                        {(booking.status === 'rejected' || booking.status === 'cancelled') && (
                           <button
-                            onClick={() => handleBookingAction(booking._id, 'confirmed')}
+                            onClick={() => handleBookingAction(booking._id, 'pending')}
                             className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
                           >
                             Wiederherstellen
                           </button>
                         )}
+                        {booking.status === 'shipped' && (
+                          <button
+                            onClick={() => handleBookingAction(booking._id, 'completed')}
+                            className="bg-green-50 text-green-700 hover:bg-green-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
+                          >
+                            Als abgeschlossen markieren
+                          </button>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </>
               ) : (
                 <div className="text-center py-16 bg-white rounded-lg">
                   <FiCalendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">Keine Buchungshistorie gefunden</h3>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">Keine Anfrage-Historie gefunden</h3>
                   <p className="text-gray-600">
                     {searchTerm || statusFilter !== "all" || dateFilter !== "all" 
                       ? "Versuchen Sie, Ihre Filter anzupassen, um mehr Buchungen zu sehen."
@@ -813,7 +842,7 @@ const LoadingScreen = () => (
   <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
     <div className="text-center">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5C6F68] mx-auto mb-4"></div>
-      <p className="text-[#5C6F68] text-lg">Buchungen werden geladen...</p>
+      <p className="text-[#5C6F68] text-lg">Anfragen werden geladen...</p>
     </div>
   </main>
 );
@@ -822,7 +851,7 @@ const AuthPrompt = () => (
   <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
     <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">
       <h2 className="text-xl font-semibold text-gray-900 mb-2">Zugriff eingeschränkt</h2>
-      <p className="text-gray-600 mb-4">Bitte melden Sie sich an, um die Buchungsseite zu sehen</p>
+      <p className="text-gray-600 mb-4">Bitte melden Sie sich an, um die Anfragen zu sehen</p>
       <button className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-medium py-2 px-4 rounded-md">
         Anmelden
       </button>

@@ -7,77 +7,75 @@ const dbName = process.env.MONGODB_DB;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { salonUid, customerUid, rating, comment, serviceName, employeeName, bookingId } = body;
+    const { salonUid, sellerUid, buyerEmail, customerUid, rating, comment, serviceName, itemName, bookingId, requestId, buyerName } = body;
 
-    // Validation
-    if (!salonUid || !customerUid || !rating || rating < 1 || rating > 5 || !serviceName || !employeeName || !bookingId) {
-      return NextResponse.json({ error: "Missing required fields (salon, customer, rating, service, employee, and booking ID required)" }, { status: 400 });
+    const finalSellerUid = sellerUid || salonUid;
+    const finalItemName = itemName || serviceName;
+    const finalRequestId = requestId || bookingId;
+
+    if (!finalSellerUid || !buyerEmail || !rating || rating < 1 || rating > 5 || !finalItemName || !finalRequestId) {
+      return NextResponse.json({ error: "Missing required fields (seller, buyerEmail, rating, item name, and request ID required)" }, { status: 400 });
     }
 
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
 
-    // Check if this specific booking exists and is completed/cancelled
+    // Check if this purchase request exists and is completed
     const bookingsCollection = db.collection("bookings");
-    const booking = await bookingsCollection.findOne({
-      _id: new ObjectId(bookingId),
-      salonUid,
-      customerUid,
-      status: { $in: ["completed", "cancelled"] }
+    const request = await bookingsCollection.findOne({
+      _id: new ObjectId(finalRequestId),
+      $or: [
+        { sellerUid: finalSellerUid },
+        { salonUid: finalSellerUid }
+      ],
+      buyerEmail: buyerEmail.toLowerCase().trim(),
+      status: { $in: ["completed", "shipped"] }
     });
 
-    if (!booking) {
+    if (!request) {
       await client.close();
-      return NextResponse.json({ error: "You can only review services from completed or cancelled bookings" }, { status: 403 });
+      return NextResponse.json({ error: "You can only review items from completed purchases" }, { status: 403 });
     }
 
-    // Verify the service and employee combination exists in this booking
-    const validServiceEmployee = booking.services?.some((service: any) => 
-      service.name === serviceName && service.employee === employeeName
-    );
-
-    if (!validServiceEmployee) {
-      await client.close();
-      return NextResponse.json({ error: "You can only review the specific service and employee from your booking" }, { status: 403 });
-    }
-
-    // Get customer and salon details
-    const usersCollection = db.collection("users");
+    // Get seller details
     const salonsCollection = db.collection("salons");
-    
-    const customer = await usersCollection.findOne({ uid: customerUid });
-    const salon = await salonsCollection.findOne({ uid: salonUid });
+    const seller = await salonsCollection.findOne({ uid: finalSellerUid });
 
-    if (!customer || !salon) {
+    if (!seller) {
       await client.close();
-      return NextResponse.json({ error: "Customer or salon not found" }, { status: 404 });
+      return NextResponse.json({ error: "Seller not found" }, { status: 404 });
     }
 
-    // Check if customer already reviewed this specific service/employee combination for this booking
+    // Check if buyer already reviewed this item for this request
     const reviewsCollection = db.collection("reviews");
     const existingReview = await reviewsCollection.findOne({
-      salonUid,
-      customerUid,
-      serviceName,
-      employeeName,
-      bookingId
+      salonUid: finalSellerUid,
+      buyerEmail: buyerEmail.toLowerCase().trim(),
+      serviceName: finalItemName,
+      bookingId: finalRequestId
     });
 
     if (existingReview) {
       await client.close();
-      return NextResponse.json({ error: "You have already reviewed this service and employee for this booking" }, { status: 409 });
+      return NextResponse.json({ error: "You have already reviewed this item for this purchase" }, { status: 409 });
     }
 
     const review = {
-      salonUid,
-      salonName: salon.name,
-      customerUid,
-      customerName: customer.name,
+      salonUid: finalSellerUid,
+      sellerUid: finalSellerUid,
+      salonName: seller.name,
+      sellerName: seller.name,
+      buyerEmail: buyerEmail.toLowerCase().trim(),
+      buyerName: buyerName || request.buyerName || "Anonymous",
+      customerUid: customerUid || buyerEmail.toLowerCase().trim(),
+      customerName: buyerName || request.buyerName || "Anonymous",
       rating: Number(rating),
       comment: comment || "",
-      serviceName,
-      employeeName,
-      bookingId,
+      serviceName: finalItemName,
+      itemName: finalItemName,
+      employeeName: seller.name,
+      bookingId: finalRequestId,
+      requestId: finalRequestId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -184,19 +182,32 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const reviewId = searchParams.get("reviewId");
     const customerUid = searchParams.get("customerUid");
+    const buyerEmail = searchParams.get("buyerEmail");
+    const isSystemAdmin = searchParams.get("systemAdmin") === "true";
 
-    if (!reviewId || !customerUid) {
-      return NextResponse.json({ error: "Review ID and customer UID are required" }, { status: 400 });
+    if (!reviewId) {
+      return NextResponse.json({ error: "Review ID is required" }, { status: 400 });
     }
 
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
     const reviewsCollection = db.collection("reviews");
 
-    const result = await reviewsCollection.deleteOne({
-      _id: new ObjectId(reviewId),
-      customerUid
-    });
+    let deleteQuery: any = { _id: new ObjectId(reviewId) };
+    
+    // System admin can delete any review without ownership check
+    if (!isSystemAdmin) {
+      if (buyerEmail) {
+        deleteQuery.buyerEmail = buyerEmail.toLowerCase().trim();
+      } else if (customerUid) {
+        deleteQuery.customerUid = customerUid;
+      } else {
+        await client.close();
+        return NextResponse.json({ error: "Buyer email or customer UID is required" }, { status: 400 });
+      }
+    }
+
+    const result = await reviewsCollection.deleteOne(deleteQuery);
 
     await client.close();
 

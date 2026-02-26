@@ -9,30 +9,33 @@ const COLORS = {
 };
 
 export default function RegisterPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [name, setName] = useState(""); // Add name state
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!username.trim() || username.trim().length < 3) {
+      setError("Benutzername muss mindestens 3 Zeichen lang sein");
+      return;
+    }
+
+    if (/[^a-zA-Z0-9_.\-]/.test(username.trim())) {
+      setError("Benutzername darf nur Buchstaben, Zahlen, _, . und - enthalten");
+      return;
+    }
     
-    // Validate inputs
     if (password !== confirm) {
-      setError("Passwords do not match");
+      setError("Passwörter stimmen nicht überein");
       return;
     }
     
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-
-    if (!name.trim()) {
-      setError("Please enter your name");
+      setError("Passwort muss mindestens 6 Zeichen lang sein");
       return;
     }
 
@@ -43,10 +46,10 @@ export default function RegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email.toLowerCase().trim(),
+          username: username.trim().toLowerCase(),
           password,
-          name: name.trim(),
-          createdAt: new Date().toISOString(),
+          name: username.trim(),
+          role: 'buyer',
         }),
       });
 
@@ -54,14 +57,13 @@ export default function RegisterPage() {
 
       if (!response.ok) {
         if (response.status === 409) {
-          setError('Diese E-Mail wird bereits verwendet.');
+          setError('Dieser Benutzername ist bereits vergeben.');
         } else {
           setError(data.error || 'Registrierung fehlgeschlagen.');
         }
         return;
       }
 
-      // Redirect to login after successful registration
       window.location.href = '/login';
 
     } catch (err) {
@@ -73,6 +75,18 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    marginTop: 6,
+    width: "100%",
+    padding: "0.75rem 1rem",
+    borderRadius: 8,
+    border: `1px solid ${COLORS.primary}30`,
+    fontSize: "1rem",
+    marginBottom: 8,
+    background: "#fafafa",
+    color: COLORS.text,
   };
 
   return (
@@ -92,12 +106,12 @@ export default function RegisterPage() {
           padding: "2.5rem 2rem",
           borderRadius: 14,
           boxShadow: `0 4px 16px ${COLORS.primary}15`,
-          minWidth: 420,
-          maxWidth: 490,
+          minWidth: 380,
+          maxWidth: 440,
           width: "100%",
           display: "flex",
           flexDirection: "column",
-          gap: 20,
+          gap: 16,
         }}
         onSubmit={handleSubmit}
       >
@@ -108,11 +122,11 @@ export default function RegisterPage() {
             fontSize: "2rem",
             color: COLORS.primary,
             textAlign: "center",
-            marginBottom: 8,
+            marginBottom: 4,
             letterSpacing: -1,
           }}
         >
-          bookme
+          mollytime
         </div>
         <div
           style={{
@@ -120,10 +134,21 @@ export default function RegisterPage() {
             fontSize: "1.1rem",
             color: COLORS.text,
             textAlign: "center",
-            marginBottom: 12,
+            marginBottom: 4,
           }}
         >
-          Registrieren
+          Konto erstellen
+        </div>
+        <div
+          style={{
+            fontSize: "0.85rem",
+            color: COLORS.primary,
+            textAlign: "center",
+            marginBottom: 8,
+            opacity: 0.8,
+          }}
+        >
+          Erstelle ein Konto, um Produkte zu kaufen und Bestellungen zu verfolgen.
         </div>
         
         {error && (
@@ -139,43 +164,15 @@ export default function RegisterPage() {
         )}
         
         <label style={{ color: COLORS.text, fontWeight: 500, fontSize: "1rem" }}>
-          Name
+          Benutzername
           <input
             type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Ihr Name"
-            style={{
-              marginTop: 6,
-              width: "100%",
-              padding: "0.75rem 1rem",
-              borderRadius: 8,
-              border: `1px solid ${COLORS.primary}30`,
-              fontSize: "1rem",
-              marginBottom: 8,
-              background: "#fafafa",
-            }}
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            placeholder="Dein Benutzername"
+            style={inputStyle}
             required
-          />
-        </label>
-        <label style={{ color: COLORS.text, fontWeight: 500, fontSize: "1rem" }}>
-          E-Mail
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Ihre E-Mail"
-            style={{
-              marginTop: 6,
-              width: "100%",
-              padding: "0.75rem 1rem",
-              borderRadius: 8,
-              border: `1px solid ${COLORS.primary}30`,
-              fontSize: "1rem",
-              marginBottom: 8,
-              background: "#fafafa",
-            }}
-            required
+            minLength={3}
           />
         </label>
         <label style={{ color: COLORS.text, fontWeight: 500, fontSize: "1rem" }}>
@@ -184,17 +181,8 @@ export default function RegisterPage() {
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            placeholder="Ihr Passwort"
-            style={{
-              marginTop: 6,
-              width: "100%",
-              padding: "0.75rem 1rem",
-              borderRadius: 8,
-              border: `1px solid ${COLORS.primary}30`,
-              fontSize: "1rem",
-              marginBottom: 8,
-              background: "#fafafa",
-            }}
+            placeholder="Mindestens 6 Zeichen"
+            style={inputStyle}
             required
             minLength={6}
           />
@@ -206,16 +194,7 @@ export default function RegisterPage() {
             value={confirm}
             onChange={e => setConfirm(e.target.value)}
             placeholder="Passwort wiederholen"
-            style={{
-              marginTop: 6,
-              width: "100%",
-              padding: "0.75rem 1rem",
-              borderRadius: 8,
-              border: `1px solid ${COLORS.primary}30`,
-              fontSize: "1rem",
-              marginBottom: 8,
-              background: "#fafafa",
-            }}
+            style={inputStyle}
             required
             minLength={6}
           />

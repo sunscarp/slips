@@ -101,6 +101,30 @@ export default function Footer() {
         >
           Widerrufsbelehrung
         </a>
+        <span style={{ opacity: 0.6 }}>|</span>
+        <a
+          href="/faq"
+          style={{
+            color: COLORS.accent,
+            textDecoration: "none",
+            opacity: 0.8,
+            whiteSpace: "nowrap"
+          }}
+        >
+          FAQ
+        </a>
+        <span style={{ opacity: 0.6 }}>|</span>
+        <a
+          href="/about"
+          style={{
+            color: COLORS.accent,
+            textDecoration: "none",
+            opacity: 0.8,
+            whiteSpace: "nowrap"
+          }}
+        >
+          Über uns
+        </a>
       </div>
       
       <div style={{ 

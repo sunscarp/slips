@@ -383,13 +383,13 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 flex items-center">
-                  <FiScissors className="mr-2 text-[#5C6F68]" /> Alle Salons
+                  <FiScissors className="mr-2 text-[#5C6F68]" /> Marktplatz
                 </h1>
               </div>
               <div className="flex items-center w-full md:w-auto">
                 <input
                   type="text"
-                  placeholder="Suche nach Salonname oder Dienstleistung..."
+                  placeholder="Suche nach Verkäufer, Produkt oder Standort..."
                   value={filterText}
                   onChange={e => {
                     setFilterText(e.target.value);
@@ -420,20 +420,13 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                   onChange={e => setFilterService(e.target.value)}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white w-full sm:min-w-[160px] focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent"
                 >
-                  <option value="">Alle Dienstleistungsarten</option>
+                  <option value="">Alle Produktarten</option>
                   {allServiceTypes.map(serviceType => (
                     <option key={serviceType} value={serviceType}>
                       {serviceType}
                     </option>
                   ))}
                 </select>
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={e => setFilterDate(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white w-full sm:min-w-[140px] focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent"
-                  min={new Date().toISOString().split('T')[0]}
-                />
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
                 <select
@@ -480,20 +473,13 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                       onChange={e => setFilterService(e.target.value)}
                       className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white"
                     >
-                      <option value="">Alle Dienstleistungsarten</option>
+                      <option value="">Alle Produktkategorien</option>
                       {allServiceTypes.map(serviceType => (
                         <option key={serviceType} value={serviceType}>
                           {serviceType}
                         </option>
                       ))}
                     </select>
-                    <input
-                      type="date"
-                      value={filterDate}
-                      onChange={e => setFilterDate(e.target.value)}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white"
-                      min={new Date().toISOString().split('T')[0]}
-                    />
                     <select
                       value={sortBy}
                       onChange={e => setSortBy(e.target.value as any)}
@@ -528,7 +514,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
             )}
           </div>
           <p className="text-gray-600 mb-6 sm:mb-8 text-center text-sm sm:text-base px-2">
-            Durchstöbern Sie alle Salons und finden Sie Ihren nächsten Termin.
+            Entdecke Verkäufer in deiner Nähe – diskret und sicher.
           </p>
           
           {loading ? (
@@ -596,7 +582,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                             className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-medium py-2.5 px-4 rounded-md w-full transition-colors duration-200 text-sm sm:text-base active:bg-[#3d4a44]"
                             onClick={() => router.push(`/salon/${slug}`)}
                           >
-                            Jetzt buchen
+                            Profil ansehen
                           </button>
                         </div>
                       </div>

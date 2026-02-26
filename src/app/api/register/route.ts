@@ -10,28 +10,50 @@ export async function POST(request: Request) {
   try {
     const userData = await request.json();
 
-    if (!userData.email) {
+    // Buyers register with username, sellers (added by admin) use email
+    const isBuyer = userData.role === 'buyer';
+    const username = userData.username ? userData.username.toLowerCase().trim() : null;
+    const email = userData.email ? userData.email.toLowerCase().trim() : null;
+
+    if (isBuyer && !username) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Benutzername ist erforderlich' },
+        { status: 400 }
+      );
+    }
+
+    if (!isBuyer && !email) {
+      return NextResponse.json(
+        { error: 'E-Mail ist erforderlich' },
         { status: 400 }
       );
     }
 
     // Generate uid if not provided
     const uid = userData.uid || randomUUID();
-    const email = userData.email.toLowerCase().trim();
 
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
 
-    // Check if user already exists by email
-    const existingUser = await db.collection('users').findOne({ email });
-    if (existingUser) {
-      await client.close();
-      return NextResponse.json(
-        { error: 'User already exists' },
-        { status: 409 }
-      );
+    // Check if user already exists
+    if (isBuyer) {
+      const existingUser = await db.collection('users').findOne({ username });
+      if (existingUser) {
+        await client.close();
+        return NextResponse.json(
+          { error: 'Benutzername bereits vergeben' },
+          { status: 409 }
+        );
+      }
+    } else {
+      const existingUser = await db.collection('users').findOne({ email });
+      if (existingUser) {
+        await client.close();
+        return NextResponse.json(
+          { error: 'User already exists' },
+          { status: 409 }
+        );
+      }
     }
 
     // Hash password if provided
@@ -42,20 +64,34 @@ export async function POST(request: Request) {
 
     // Build the document (don't store plain password)
     const { password: _omit, uid: _uidOmit, ...rest } = userData;
-    const userDoc = {
+    const userDoc: any = {
       ...rest,
       uid,
-      email,
+      role: isBuyer ? 'buyer' : (userData.role || 'salon'),
+      ...(username ? { username } : {}),
+      ...(email ? { email } : {}),
       ...(passwordHash ? { passwordHash } : {}),
+      createdAt: new Date().toISOString(),
     };
 
     const userResult = await db.collection('users').insertOne(userDoc);
 
-    // If user is a salon, also insert into salons collection
-    if (userData.role === 'salon') {
+    // If user is a seller (was salon), also insert into salons collection
+    if (userData.role === 'salon' || userData.role === 'seller') {
       await db.collection('salons').insertOne({
         ...userDoc,
+        role: 'salon', // keep backward compat in DB
         userId: userResult.insertedId,
+        verified: false, // sellers start unverified, admin must verify
+        // Seller profile fields
+        height: userData.height || "",
+        weight: userData.weight || "",
+        size: userData.size || "",
+        hobbies: userData.hobbies || "",
+        serviceHours: userData.serviceHours || "",
+        location: userData.location || "",
+        description: userData.description || "",
+        contact: userData.contact || "",
       });
     }
 

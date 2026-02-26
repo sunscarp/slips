@@ -51,6 +51,10 @@ export default function SalonProfilePage() {
   const [holidayRangeStart, setHolidayRangeStart] = useState<string>("");
   const [holidayRangeEnd, setHolidayRangeEnd] = useState<string>("");
   const [salonGender, setSalonGender] = useState<string>("");
+  const [form, setForm] = useState<{
+    height: string; weight: string; size: string;
+    hobbies: string; serviceHours: string; paymentInstructions: string;
+  }>({ height: '', weight: '', size: '', hobbies: '', serviceHours: '', paymentInstructions: '' });
   // googleMapsAddress, working days and holidays removed for marketplace flow
 
   useEffect(() => {
@@ -84,6 +88,10 @@ export default function SalonProfilePage() {
                 setSalonLocation(s.location ?? "");
                 setSalonContact(s.contact ?? "");
                 setSalonGender(s.gender ?? "");
+                setForm({
+                  height: s.height ?? '', weight: s.weight ?? '', size: s.size ?? '',
+                  hobbies: s.hobbies ?? '', serviceHours: s.serviceHours ?? '', paymentInstructions: s.paymentInstructions ?? '',
+                });
                 setImagePreviews(
                   s.imageUrls || s.imageUrl
                     ? (s.imageUrls ?? [s.imageUrl]).filter(Boolean)
@@ -96,7 +104,7 @@ export default function SalonProfilePage() {
             } else {
               // Normal flow for salon users
               const salonRes = await fetch(`/api/salons?email=${encodeURIComponent(currentUser.email)}`);
-              if (!salonRes.ok) throw new Error("Salon nicht gefunden.");
+              if (!salonRes.ok) throw new Error("Profil nicht gefunden.");
               const data = await salonRes.json();
               const salonData = data.salon ?? data;
               setSalon(salonData);
@@ -105,6 +113,10 @@ export default function SalonProfilePage() {
                 setSalonLocation(salonData.location ?? "");
                 setSalonContact(salonData.contact ?? "");
                 setSalonGender(salonData.gender ?? "");
+                setForm({
+                  height: salonData.height ?? '', weight: salonData.weight ?? '', size: salonData.size ?? '',
+                  hobbies: salonData.hobbies ?? '', serviceHours: salonData.serviceHours ?? '', paymentInstructions: salonData.paymentInstructions ?? '',
+                });
                 setImagePreviews(
                   salonData.imageUrls || salonData.imageUrl
                     ? (salonData.imageUrls ?? [salonData.imageUrl]).filter(Boolean)
@@ -112,7 +124,7 @@ export default function SalonProfilePage() {
                 );
             }
           } catch (err) {
-            setStatus("Fehler beim Laden des Salons.");
+            setStatus("Fehler beim Laden des Profils.");
           } finally {
             setLoading(false);
           }
@@ -127,8 +139,17 @@ export default function SalonProfilePage() {
   }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Adding images from salon profile is disabled — images come from products now.
-    return;
+    const files = e.target.files;
+    if (!files) return;
+    const newFiles = Array.from(files);
+    setImageFiles(prev => [...prev, ...newFiles]);
+    newFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleRemoveImage = async (idx: number) => {
@@ -207,7 +228,17 @@ export default function SalonProfilePage() {
               })
           )
         );
+        // Upload new images to the server
+        const uploadRes = await fetch("/api/salons/upload-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: salon.email, images: base64s }),
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          imageUrls = [...imageUrls, ...uploadData.urls];
         }
+      }
       const res = await fetch("/api/salons", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -218,10 +249,16 @@ export default function SalonProfilePage() {
           gender: salonGender,
           contact: salonContact,
           imageUrls,
+          height: form.height,
+          weight: form.weight,
+          size: form.size,
+          hobbies: form.hobbies,
+          serviceHours: form.serviceHours,
+          paymentInstructions: form.paymentInstructions,
         }),
       });
       if (!res.ok) throw new Error("Update fehlgeschlagen.");
-      setStatus("Salon-Profil erfolgreich aktualisiert.");
+      setStatus("Profil erfolgreich aktualisiert.");
       setSalon({
         ...salon,
         name: salonName,
@@ -231,11 +268,12 @@ export default function SalonProfilePage() {
         imageUrls,
         workingDays,
         holidays,
+        ...form,
       });
       setImageFiles([]);
       setImagePreviews(imageUrls);
     } catch {
-      setStatus("Fehler beim Aktualisieren des Salon-Profils.");
+      setStatus("Fehler beim Aktualisieren des Profils.");
     }
   };
 
@@ -246,7 +284,7 @@ export default function SalonProfilePage() {
         <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p className="text-black text-lg">Lade Salon-Profil...</p>
+            <p className="text-black text-lg">Lade Profil...</p>
           </div>
         </main>
         <Footer />
@@ -261,7 +299,7 @@ export default function SalonProfilePage() {
         <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
           <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">
             <h2 className="text-xl font-semibold text-black mb-2">Bitte einloggen</h2>
-            <p className="text-black mb-4">Melden Sie sich an, um das Salon-Profil zu verwalten.</p>
+            <p className="text-black mb-4">Melde dich an, um dein Profil zu verwalten.</p>
           </div>
         </main>
         <Footer />
@@ -283,13 +321,13 @@ export default function SalonProfilePage() {
           {/* Header */}
           <div className="mb-8 text-center">
             <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2">
-              Salon Profil
+              Verkäufer-Profil
               {viewingSalonUid && isSystemAdmin && (
                 <span className="text-lg text-gray-600 block mt-1">(System-Ansicht für {salon?.name})</span>
               )}
             </h1>
             <p className="text-black text-base sm:text-lg">
-              Verwalten Sie Ihr Salon-Profil und aktualisieren Sie Ihre Informationen
+              Verwalte dein Verkäufer-Profil und aktualisiere deine Informationen
             </p>
           </div>
 
@@ -298,10 +336,10 @@ export default function SalonProfilePage() {
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <h3 className="text-base sm:text-lg font-semibold text-black mb-4 flex items-center gap-2">
                 <span className="inline-flex items-center justify-center w-8 h-8 rounded bg-primary-600 text-white font-bold">S</span>
-                Salon Information
+                Profil-Informationen
               </h3>
               <label className="block text-black font-medium mb-2">
-                Salonname
+                Name / Pseudonym
               </label>
               <input
                 type="text"
@@ -318,7 +356,7 @@ export default function SalonProfilePage() {
                 onChange={e => setSalonDescription(e.target.value)}
                 className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-md border border-gray-300 focus:border-primary-600 focus:ring-2 focus:ring-primary-100 text-black text-base outline-none transition"
                 rows={3}
-                placeholder="Beschreiben Sie Ihren Salon..."
+                placeholder="Beschreibe dich und deine Produkte..."
               />
               <label className="block text-black font-medium mt-4 mb-2">
                 Geschlecht
@@ -334,16 +372,77 @@ export default function SalonProfilePage() {
                 <option value="female">Weiblich</option>
                 <option value="other">Andere</option>
               </select>
+              {/* Seller Profile Fields */}
+                <div>
+                  <label className="block text-sm font-semibold text-[#1F1F1F] mb-1">Größe (cm)</label>
+                  <input
+                    type="text"
+                    value={form.height || ''}
+                    onChange={e => setForm(f => ({ ...f, height: e.target.value }))}
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    placeholder="z.B. 170"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-[#1F1F1F] mb-1">Gewicht (kg)</label>
+                  <input
+                    type="text"
+                    value={form.weight || ''}
+                    onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    placeholder="z.B. 60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-[#1F1F1F] mb-1">Konfektionsgröße</label>
+                  <input
+                    type="text"
+                    value={form.size || ''}
+                    onChange={e => setForm(f => ({ ...f, size: e.target.value }))}
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    placeholder="z.B. S, M, L, 38"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-[#1F1F1F] mb-1">Hobbys & Interessen</label>
+                  <input
+                    type="text"
+                    value={form.hobbies || ''}
+                    onChange={e => setForm(f => ({ ...f, hobbies: e.target.value }))}
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    placeholder="z.B. Yoga, Reisen, Fotografie"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-[#1F1F1F] mb-1">Erreichbarkeit / Servicezeiten</label>
+                  <input
+                    type="text"
+                    value={form.serviceHours || ''}
+                    onChange={e => setForm(f => ({ ...f, serviceHours: e.target.value }))}
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    placeholder="z.B. Mo-Fr 10-18 Uhr"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-[#1F1F1F] mb-1">Zahlungsinformationen (für Käufer)</label>
+                  <textarea
+                    value={form.paymentInstructions || ''}
+                    onChange={e => setForm(f => ({ ...f, paymentInstructions: e.target.value }))}
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    rows={3}
+                    placeholder="z.B. PayPal: meine@email.de oder IBAN: DE..."
+                  />
+                </div>
               {/* Google Maps address removed for marketplace */}
               <label className="block text-black font-medium mt-4 mb-2">
-                Kontaktinformation
+                Kontakt
               </label>
               <input
                 type="text"
                 value={salonContact}
                 onChange={e => setSalonContact(e.target.value)}
                 className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-md border border-gray-300 focus:border-primary-600 focus:ring-2 focus:ring-primary-100 text-black text-base outline-none transition"
-                placeholder="Telefon, E-Mail oder Webseite"
+                placeholder="Telefon, E-Mail oder Social Media"
               />
             </div>
 
@@ -351,7 +450,7 @@ export default function SalonProfilePage() {
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <h3 className="text-base sm:text-lg font-semibold text-black mb-4 flex items-center gap-2">
                 <span className="inline-flex items-center justify-center w-8 h-8"></span>
-                Salon Bilder
+                Profilbilder
               </h3>
               {/* Primary image */}
               <div className="mb-6">
@@ -361,7 +460,7 @@ export default function SalonProfilePage() {
                     <>
                       <img
                         src={imagePreviews[0]}
-                        alt="Hauptbild des Salons"
+                        alt="Profilbild"
                         className="w-full h-full object-cover"
                       />
                       <button

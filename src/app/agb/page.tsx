@@ -8,31 +8,31 @@ export default function AgbPage() {
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-2 text-gray-700">1. Geltungsbereich</h2>
           <p className="text-black text-sm">
-            Diese Allgemeinen Geschäftsbedingungen gelten für alle Buchungen und Dienstleistungen, die über die Plattform bookme angeboten werden.
+            Diese Allgemeinen Geschäftsbedingungen gelten für alle Bestellungen und Produkte, die über die Plattform mollytime angeboten werden.
           </p>
         </section>
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-2 text-gray-700">2. Vertragspartner</h2>
           <p className="text-black text-sm">
-            Vertragspartner sind die jeweiligen Salons und die Kunden, die über bookme buchen. Bookme tritt als Vermittler auf.
+            Vertragspartner sind die jeweiligen Verkäufer und die Käufer, die über mollytime bestellen. Mollytime tritt als Vermittler auf.
           </p>
         </section>
         <section className="mb-6">
-          <h2 className="text-lg font-semibold mb-2 text-gray-700">3. Buchung und Zahlung</h2>
+          <h2 className="text-lg font-semibold mb-2 text-gray-700">3. Bestellung und Zahlung</h2>
           <p className="text-black text-sm">
-            Die Buchung erfolgt verbindlich über die Plattform. Die Zahlung kann online oder vor Ort im Salon erfolgen, je nach Angebot des Salons.
+            Die Bestellung erfolgt verbindlich über die Plattform. Die Zahlung erfolgt nach Annahme der Anfrage durch den Verkäufer gemäß dessen Zahlungsinformationen.
           </p>
         </section>
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-2 text-gray-700">4. Stornierung und Widerruf</h2>
           <p className="text-black text-sm">
-            Stornierungen sind gemäß den jeweiligen Salonbedingungen möglich. Ein Widerrufsrecht besteht nach den gesetzlichen Vorgaben.
+            Stornierungen sind gemäß den jeweiligen Verkäuferbedingungen möglich. Ein Widerrufsrecht besteht nach den gesetzlichen Vorgaben.
           </p>
         </section>
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-2 text-gray-700">5. Haftung</h2>
           <p className="text-black text-sm">
-            Bookme haftet nicht für die Durchführung der Dienstleistungen durch die Salons. Ansprüche sind direkt an den Salon zu richten.
+            Mollytime haftet nicht für die Qualität der Produkte der Verkäufer. Ansprüche sind direkt an den Verkäufer zu richten.
           </p>
         </section>
         <section className="mb-6">

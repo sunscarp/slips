@@ -71,14 +71,14 @@ export default function SettingsPage() {
             } else {
               // Normal flow for salon users
               const salonFetchRes = await fetch(`/api/salons?email=${encodeURIComponent(currentUser.email)}`);
-              if (!salonFetchRes.ok) throw new Error("Salon nicht gefunden.");
+              if (!salonFetchRes.ok) throw new Error("Profil nicht gefunden.");
               const data = await salonFetchRes.json();
               const salonData = data.salon ?? data;
               setSalon(salonData);
               setStoreCustomerAddress(!!salonData.storeCustomerAddress);
             }
           } catch (err) {
-            setStatus("Fehler beim Laden des Salons.");
+            setStatus("Fehler beim Laden des Profils.");
           } finally {
             setLoading(false);
           }
@@ -142,7 +142,7 @@ export default function SettingsPage() {
           <main className="flex-1 bg-gray-50 flex items-center justify-center font-sans">
             <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">
               <h2 className="text-xl font-semibold text-black mb-2">Bitte einloggen</h2>
-              <p className="text-black mb-4">Melden Sie sich an, um die Einstellungen zu sehen.</p>
+              <p className="text-black mb-4">Melde dich an, um die Einstellungen zu sehen.</p>
             </div>
           </main>
           <Footer />
@@ -171,7 +171,7 @@ export default function SettingsPage() {
                 )}
               </h1>
               <p className="text-black text-base sm:text-lg">
-                Verwalten Sie Ihre Buchungs- und Datenschutzeinstellungen
+                Verwalte deine Einstellungen
               </p>
             </div>
 
@@ -180,7 +180,7 @@ export default function SettingsPage() {
               <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
                 <h3 className="text-base sm:text-lg font-semibold text-black mb-4 flex items-center gap-2">
                   <span className="inline-flex items-center justify-center w-8 h-8 rounded bg-primary-600 text-white font-bold">B</span>
-                  Buchungshistorie-Einstellungen
+                  Anfrage-Historie
                 </h3>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -191,11 +191,11 @@ export default function SettingsPage() {
                       className="accent-primary-600 w-5 h-5"
                     />
                     <span className="text-black font-medium">
-                      Buchungshistorie anzeigen/tracken
+                      Anfrage-Historie anzeigen
                     </span>
                   </label>
                   <span className="text-xs text-gray-500">
-                    Wenn deaktiviert, können Sie Ihre Buchungshistorie nicht einsehen.
+                    Wenn deaktiviert, wird die Anfrage-Historie nicht angezeigt.
                   </span>
                 </div>
               </div>
@@ -204,7 +204,7 @@ export default function SettingsPage() {
               <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
                 <h3 className="text-base sm:text-lg font-semibold text-black mb-4 flex items-center gap-2">
                   <span className="inline-flex items-center justify-center w-8 h-8 rounded bg-primary-600 text-white font-bold">A</span>
-                  Kundenadress-Einstellungen
+                  Käuferadress-Einstellungen
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
@@ -216,12 +216,12 @@ export default function SettingsPage() {
                         className="accent-primary-600 w-5 h-5"
                       />
                       <span className="text-black font-medium">
-                        Kundenadresse beim Buchen erfassen
+                        Käuferadresse bei Anfragen erfassen
                       </span>
                     </label>
                   </div>
                   <div className="text-xs text-gray-600">
-                    Wenn aktiviert, können Kunden ihre Adresse (Straße, Hausnummer, PLZ, Land) beim Buchungsprozess eingeben. 
+                    Wenn aktiviert, können Kunden ihre Adresse (Straße, Hausnummer, PLZ, Land) beim Anfrageprozess eingeben. 
                     Diese Informationen werden gespeichert und sind in Ihrer Buchungsübersicht verfügbar.
                   </div>
                 </div>

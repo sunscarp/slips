@@ -9,13 +9,12 @@ const COLORS = {
 
 const NAV_LINKS = [
   { name: "Dashboard", href: "/admin/dashboard" },
-  { name: "Bestellungen", href: "/admin/orders" },
+  { name: "Anfragen", href: "/admin/orders" },
   { name: "Kunden", href: "/admin/customers" },
   { name: "Produkte", href: "/admin/products" },
   { name: "Bewertungen", href: "/admin/reviews" },
   { name: "Analysen", href: "/admin/analytics" },
-  { name: "Salonprofil", href: "/admin/salonprofile" }, // <-- Added here
-  // { name: "Einstellungen", href: "/admin/settings" }, // Remove from main nav
+  { name: "Profil", href: "/admin/salonprofile" },
 ];
 
 // Add props for salon data

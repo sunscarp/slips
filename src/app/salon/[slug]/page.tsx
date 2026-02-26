@@ -1,9 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef, Fragment } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FiMapPin, FiPhone, FiScissors, FiClock, FiStar, FiArrowLeft, FiUser, FiEdit, FiTrash2 } from "react-icons/fi";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
+import { FiMapPin, FiPhone, FiScissors, FiClock, FiStar, FiArrowLeft, FiUser } from "react-icons/fi";
 import Footer from "@/components/footer";
 
 // Color palette (same as dashboard)
@@ -26,6 +24,11 @@ type Salon = {
   location: string;
   imageUrls: string[];
   googleMapsAddress?: string;
+  height?: string;
+  weight?: string;
+  size?: string;
+  hobbies?: string;
+  serviceHours?: string;
 };
 
 type Service = {
@@ -69,21 +72,9 @@ export default function SalonPage() {
   const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
-  const [canReview, setCanReview] = useState(false);
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [reviewFormData, setReviewFormData] = useState({
-    rating: 5,
-    comment: "",
-    serviceName: "",
-    employeeName: ""
-  });
-  const [editingReview, setEditingReview] = useState<Review | null>(null);
-  const [user] = useAuthState(auth);
   const servicesRef = useRef<HTMLDivElement>(null);
   const aboutRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
-  const [eligibleReviews, setEligibleReviews] = useState<any[]>([]);
-  const [selectedReviewableService, setSelectedReviewableService] = useState<any>(null);
   const [detailsService, setDetailsService] = useState<Service | null>(null);
   const [serviceReviews, setServiceReviews] = useState<Review[]>([]);
   const [serviceAverageRating, setServiceAverageRating] = useState<number>(0);
@@ -146,11 +137,11 @@ export default function SalonPage() {
   });
   const serviceTypes = Object.keys(serviceTypeMap);
 
-  // Add "All Services" option
-  const allServiceTypes = ["All Services", ...serviceTypes];
+  // Add "Alle Produkte" option
+  const allServiceTypes = ["Alle Produkte", ...serviceTypes];
 
   useEffect(() => {
-    if (serviceTypes.length > 0 && !selectedType) setSelectedType("All Services");
+    if (serviceTypes.length > 0 && !selectedType) setSelectedType("Alle Produkte");
   }, [services]);
 
   const scrollToServices = () => {
@@ -170,10 +161,10 @@ export default function SalonPage() {
       if (exists) {
         return prev.filter(s => s._id !== service._id);
       } else {
-        const option = selectedOption || selectedDurations[service._id] || (service.durationPrices && service.durationPrices[0]);
+        const option = selectedOption || selectedDurations[service._id] || (service.durationPrices && service.durationPrices[0]) || (service.price ? { duration: 0, price: service.price } : undefined);
         return [...prev, { 
           ...service, 
-          price: option?.price || 0,
+          price: option?.price || service.price || 0,
           duration: option?.duration || 0,
           selectedOption: option 
         }];
@@ -181,205 +172,39 @@ export default function SalonPage() {
     });
   };
 
-  // Proceed to booking with selected services
+  // Proceed to purchase request with selected products
   const proceedToBooking = () => {
     if (cartServices.length > 0 && salon) {
-      // Check if user is logged in
-      if (!user) {
-        // Save current page URL and cart state for redirect after login
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem("bookme_redirect_after_login", window.location.href);
-          window.localStorage.setItem("salon_booking_salon", JSON.stringify(salon));
-        }
-        // Redirect to login
-        router.push("/login");
-        return;
-      }
-
-      // Save salon details to localStorage
+      // Save seller details to localStorage
       if (typeof window !== "undefined") {
         window.localStorage.setItem("salon_booking_salon", JSON.stringify(salon));
       }
-      // Pass selected service IDs as query param
+      // Pass selected product IDs as query param
       const ids = cartServices.map(s => s._id).join(",");
       router.push(`/salon/${slug}/book?serviceIds=${ids}`);
     }
   };
 
-  // Fetch reviews and check if user can review
+  // Fetch reviews
   useEffect(() => {
     async function fetchReviews() {
       if (!salon?.uid) return;
       
       try {
-        if (!salon) return;
-        if (!salon) return;
         const reviewsRes = await fetch(`/api/reviews?salonUid=${salon.uid}`);
         const reviewsData = await reviewsRes.json();
         setReviews(reviewsData.reviews || []);
         setAverageRating(reviewsData.averageRating || 0);
         setTotalReviews(reviewsData.totalReviews || 0);
-
-        // Check what services user can review
-        if (user?.uid) {
-          const bookingsRes = await fetch(`/api/bookings?salonUid=${salon.uid}&customerUid=${user.uid}`);
-          const bookingsData = await bookingsRes.json();
-          
-          // Get all eligible service/employee combinations from completed/cancelled bookings
-          const eligibleServices: any[] = [];
-          bookingsData.bookings?.forEach((booking: any) => {
-            if (booking.status === "completed" || booking.status === "cancelled") {
-              booking.services?.forEach((service: any) => {
-                // Check if this service/employee combo hasn't been reviewed yet
-                const alreadyReviewed = reviewsData.reviews?.some((review: Review) => 
-                  review.customerUid === user.uid && 
-                  review.serviceName === service.name && 
-                  review.employeeName === service.employee &&
-                  review.bookingId === booking._id
-                );
-                
-                if (!alreadyReviewed) {
-                  eligibleServices.push({
-                    bookingId: booking._id,
-                    serviceName: service.name,
-                    employeeName: service.employee,
-                    date: booking.date,
-                    time: booking.time
-                  });
-                }
-              });
-            }
-          });
-          
-          setEligibleReviews(eligibleServices);
-          setCanReview(eligibleServices.length > 0);
-        }
       } catch (error) {
         console.error('Error fetching reviews:', error);
       }
     }
 
     fetchReviews();
-  }, [salon?.uid, user?.uid]);
+  }, [salon?.uid]);
 
-  const handleReviewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.uid || !salon?.uid || !selectedReviewableService) return;
-
-    try {
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          salonUid: salon.uid,
-          customerUid: user.uid,
-          rating: reviewFormData.rating,
-          comment: reviewFormData.comment,
-          serviceName: selectedReviewableService.serviceName,
-          employeeName: selectedReviewableService.employeeName,
-          bookingId: selectedReviewableService.bookingId
-        })
-      });
-
-      if (response.ok) {
-        // Refresh reviews and eligible services
-        const reviewsRes = await fetch(`/api/reviews?salonUid=${salon.uid}`);
-        const reviewsData = await reviewsRes.json();
-        setReviews(reviewsData.reviews || []);
-        setAverageRating(reviewsData.averageRating || 0);
-        setTotalReviews(reviewsData.totalReviews || 0);
-        
-        // Remove the reviewed service from eligible list
-        setEligibleReviews(prev => {
-          const updatedList = prev.filter(item => 
-            !(item.bookingId === selectedReviewableService.bookingId && 
-              item.serviceName === selectedReviewableService.serviceName && 
-              item.employeeName === selectedReviewableService.employeeName)
-          );
-          // Update canReview based on the new list length
-          setCanReview(updatedList.length > 0);
-          return updatedList;
-        });
-        
-        setShowReviewForm(false);
-        setSelectedReviewableService(null);
-        setReviewFormData({ rating: 5, comment: "", serviceName: "", employeeName: "" });
-        // Don't manually set canReview here as it's handled above
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to submit review');
-      }
-    } catch (error) {
-      console.error('Error submitting review:', error);
-      alert('Failed to submit review');
-    }
-  };
-
-  const handleEditReview = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingReview || !user?.uid) return;
-
-    try {
-      const response = await fetch('/api/reviews', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reviewId: editingReview._id,
-          customerUid: user.uid,
-          rating: reviewFormData.rating,
-          comment: reviewFormData.comment
-        })
-      });
-
-      if (response.ok) {
-        // Refresh reviews
-        const reviewsRes = await fetch(`/api/reviews?salonUid=${salon?.uid}`);
-        const reviewsData = await reviewsRes.json();
-        setReviews(reviewsData.reviews || []);
-        setAverageRating(reviewsData.averageRating || 0);
-        
-        setEditingReview(null);
-        setShowReviewForm(false);
-        setReviewFormData({ rating: 5, comment: "", serviceName: "", employeeName: "" });
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to update review');
-      }
-    } catch (error) {
-      console.error('Error updating review:', error);
-      alert('Failed to update review');
-    }
-  };
-
-  const handleDeleteReview = async (reviewId: string) => {
-    if (!user?.uid || !confirm('Are you sure you want to delete this review?')) return;
-
-    try {
-      const response = await fetch(`/api/reviews?reviewId=${reviewId}&customerUid=${user.uid}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        // Refresh reviews
-        const reviewsRes = await fetch(`/api/reviews?salonUid=${salon?.uid}`);
-        const reviewsData = await reviewsRes.json();
-        setReviews(reviewsData.reviews || []);
-        setAverageRating(reviewsData.averageRating || 0);
-        setTotalReviews(reviewsData.totalReviews || 0);
-        
-        setEditingReview(null);
-        setCanReview(true);
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to delete review');
-      }
-    } catch (error) {
-      console.error('Error deleting review:', error);
-      alert('Failed to delete review');
-    }
-  };
-
-  // Fetch reviews for a specific service
+  // Fetch reviews for a specific product
   const openServiceDetails = async (service: Service) => {
     setDetailsService(service);
     // Fetch reviews for this service in this salon
@@ -408,8 +233,8 @@ export default function SalonPage() {
   if (!salon) return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
       <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Salon not found</h2>
-        <p className="text-gray-600 mb-4">Please check the link or try again.</p>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Verkäufer nicht gefunden</h2>
+        <p className="text-gray-600 mb-4">Bitte überprüfe den Link oder versuche es erneut.</p>
       </div>
     </main>
   );
@@ -425,7 +250,7 @@ export default function SalonPage() {
               className="flex items-center text-[#5C6F68] hover:text-[#4a5a54] transition-colors text-base sm:text-lg"
             >
               <FiArrowLeft className="mr-2" />
-              Zurück zu den Salons
+              Zurück zum Marktplatz
             </button>
             {/* Book Your Style entfernt */}
           </div>
@@ -453,13 +278,13 @@ export default function SalonPage() {
               className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold py-2 px-2 sm:py-3 sm:px-6 rounded-lg transition-all duration-200 text-xs sm:text-base"
               onClick={scrollToServices}
             >
-              Jetzt buchen
+              Produkte ansehen
             </button>
             <button
               className="bg-[#E4DED5] hover:bg-[#d2cbb7] text-[#1F1F1F] font-semibold py-2 px-2 sm:py-3 sm:px-6 rounded-lg transition-all duration-200 text-xs sm:text-base"
               onClick={scrollToAbout}
             >
-              Über uns
+              Über mich
             </button>
           </div>
         </section>
@@ -532,8 +357,8 @@ export default function SalonPage() {
         <section ref={servicesRef} className="bg-[#FAFAFA] py-8 sm:py-16 text-left">
           <div className="w-full">
             <div className="mb-8 sm:mb-12">
-              <h2 className="text-2xl sm:text-4xl font-bold text-[#1F1F1F] mb-2 sm:mb-4 tracking-tight">Unsere Dienstleistungen</h2>
-              <p className="text-gray-600 text-base sm:text-lg">Wählen Sie aus unseren Premium-Salon-Dienstleistungen</p>
+              <h2 className="text-2xl sm:text-4xl font-bold text-[#1F1F1F] mb-2 sm:mb-4 tracking-tight">Meine Produkte</h2>
+              <p className="text-gray-600 text-base sm:text-lg">Entdecke exklusive Produkte</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
               {/* Left: Service Types */}
@@ -552,7 +377,7 @@ export default function SalonPage() {
                         <div className="flex items-center">
                           <span className="font-semibold">{type}</span>
                           <span className="ml-2 text-xs sm:text-sm text-gray-500">
-                            ({type === "All Services"
+                            ({type === "Alle Produkte"
                               ? services.length
                               : serviceTypeMap[type]?.length || 0})
                           </span>
@@ -564,11 +389,11 @@ export default function SalonPage() {
               </div>
               {/* Right: Services for selected type */}
               <div className="flex-1 w-full">
-                {(selectedType === "All Services"
+                {(selectedType === "Alle Produkte"
                   ? services.length > 0
                   : serviceTypeMap[selectedType ?? ""]?.length > 0) ? (
                   <div className="space-y-0">
-                    {(selectedType === "All Services"
+                    {(selectedType === "Alle Produkte"
                       ? services
                       : serviceTypeMap[selectedType ?? ""]
                     ).map(service => (
@@ -587,10 +412,10 @@ export default function SalonPage() {
                             </button>
                           </div>
                           
-                          {/* Duration/Price Options */}
+                          {/* Price / Variants */}
                           {service.durationPrices && service.durationPrices.length > 0 ? (
                             <div className="space-y-2 sm:space-y-3">
-                              <h4 className="text-xs sm:text-sm font-medium text-gray-700">Optionen wählen:</h4>
+                              <h4 className="text-xs sm:text-sm font-medium text-gray-700">Varianten:</h4>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                                 {service.durationPrices.map((option: { duration: number; price: number }, index: number) => (
                                   <div
@@ -629,9 +454,19 @@ export default function SalonPage() {
                                 ))}
                               </div>
                             </div>
+                          ) : service.price != null && service.price > 0 ? (
+                            <div className="flex items-center justify-between border-2 border-gray-200 rounded-lg p-3 sm:p-4 hover:border-gray-300 transition-colors">
+                              <div className="text-lg sm:text-xl font-bold text-[#1F1F1F]">€{service.price}</div>
+                              <button
+                                className={`bg-white border-2 ${cartServices.find(s => s._id === service._id) ? "border-[#9DBE8D] text-[#9DBE8D] bg-[#E4DED5]" : "border-[#FF6B6B] text-[#FF6B6B]"} hover:bg-[#FF6B6B] hover:text-white font-semibold py-1 sm:py-2 px-2 sm:px-4 rounded-lg transition-all duration-200 text-xs sm:text-sm`}
+                                onClick={() => toggleServiceInCart(service, { duration: 0, price: service.price || 0 })}
+                              >
+                                {cartServices.find(s => s._id === service._id) ? "Entfernen" : "Hinzufügen"}
+                              </button>
+                            </div>
                           ) : (
                             <div className="text-center py-2 sm:py-4 text-gray-500 text-xs sm:text-base">
-                              Keine Preisoptionen verfügbar
+                              Preis auf Anfrage
                             </div>
                           )}
                         </div>
@@ -642,8 +477,8 @@ export default function SalonPage() {
                   <div className="py-6 sm:py-12">
                     <div className="bg-white rounded-xl p-4 sm:p-8 shadow-sm border border-[#E4DED5] max-w-xs sm:max-w-md mx-auto">
                       <FiScissors className="w-8 h-8 sm:w-12 sm:h-12 text-[#E4DED5] mb-2 sm:mb-4" />
-                      <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1 sm:mb-2">Keine Dienstleistungen verfügbar</h3>
-                      <p className="text-gray-600 text-xs sm:text-base">Dieser Salon hat noch keine Dienstleistungen hinzugefügt.</p>
+                      <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1 sm:mb-2">Keine Produkte verfügbar</h3>
+                      <p className="text-gray-600 text-xs sm:text-base">Dieser Verkäufer hat noch keine Produkte hinzugefügt.</p>
                     </div>
                   </div>
                 )}
@@ -656,12 +491,48 @@ export default function SalonPage() {
         <section ref={aboutRef} className="w-full py-4 sm:py-8 text-left mb-4 sm:mb-8">
           <div className="space-y-4 sm:space-y-8 w-full">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold text-[#1F1F1F] mb-2 sm:mb-3">Über uns</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold text-[#1F1F1F] mb-2 sm:mb-3">Über mich</h2>
               <p className="text-gray-700 text-base sm:text-lg leading-relaxed">{salon.description}</p>
+              
+              {/* Seller Profile Details */}
+              {(salon.height || salon.weight || salon.size || salon.hobbies || salon.serviceHours) && (
+                <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                  {salon.height && (
+                    <div className="bg-white border border-[#E4DED5] rounded-lg p-3 sm:p-4">
+                      <span className="text-xs sm:text-sm text-gray-500">Größe</span>
+                      <p className="font-semibold text-[#1F1F1F] text-sm sm:text-base">{salon.height}</p>
+                    </div>
+                  )}
+                  {salon.weight && (
+                    <div className="bg-white border border-[#E4DED5] rounded-lg p-3 sm:p-4">
+                      <span className="text-xs sm:text-sm text-gray-500">Gewicht</span>
+                      <p className="font-semibold text-[#1F1F1F] text-sm sm:text-base">{salon.weight}</p>
+                    </div>
+                  )}
+                  {salon.size && (
+                    <div className="bg-white border border-[#E4DED5] rounded-lg p-3 sm:p-4">
+                      <span className="text-xs sm:text-sm text-gray-500">Konfektionsgröße</span>
+                      <p className="font-semibold text-[#1F1F1F] text-sm sm:text-base">{salon.size}</p>
+                    </div>
+                  )}
+                  {salon.hobbies && (
+                    <div className="bg-white border border-[#E4DED5] rounded-lg p-3 sm:p-4 col-span-2 sm:col-span-3">
+                      <span className="text-xs sm:text-sm text-gray-500">Hobbys & Interessen</span>
+                      <p className="font-semibold text-[#1F1F1F] text-sm sm:text-base">{salon.hobbies}</p>
+                    </div>
+                  )}
+                  {salon.serviceHours && (
+                    <div className="bg-white border border-[#E4DED5] rounded-lg p-3 sm:p-4 col-span-2 sm:col-span-3">
+                      <span className="text-xs sm:text-sm text-gray-500">Erreichbar</span>
+                      <p className="font-semibold text-[#1F1F1F] text-sm sm:text-base">{salon.serviceHours}</p>
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Google Maps Embed */}
               {salon.googleMapsAddress && (
                 <div className="mt-4 sm:mt-8">
-                  <h3 className="text-base sm:text-lg font-semibold text-[#1F1F1F] mb-1 sm:mb-2">Finden Sie uns auf Google Maps</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-[#1F1F1F] mb-1 sm:mb-2">Standort</h3>
                   <div className="rounded-lg overflow-hidden border border-[#E4DED5]">
                     <iframe
                       src={`https://www.google.com/maps?q=${encodeURIComponent(salon.googleMapsAddress)}&output=embed`}
@@ -700,184 +571,7 @@ export default function SalonPage() {
               </div>
             </div>
             
-            {/* Review Form */}
-            {user && canReview && !editingReview && (
-              <div className="bg-white rounded-lg border border-[#E4DED5] p-4 sm:p-6 mb-4 sm:mb-8">
-                <h3 className="text-xl font-semibold text-[#1F1F1F] mb-4">Bewertung schreiben</h3>
-                
-                {/* Service Selection */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-[#1F1F1F] mb-2">
-                    Dienstleistung auswählen
-                  </label>
-                  <div className="w-full">
-                    <select
-                      value={selectedReviewableService ? 
-                        `${selectedReviewableService.bookingId}-${selectedReviewableService.serviceName}-${selectedReviewableService.employeeName}` : 
-                        ""}
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          const [bookingId, serviceName, employeeName] = e.target.value.split('-');
-                          const service = eligibleReviews.find(s => 
-                            s.bookingId === bookingId && s.serviceName === serviceName && s.employeeName === employeeName
-                          );
-                          setSelectedReviewableService(service);
-                        } else {
-                          setSelectedReviewableService(null);
-                        }
-                      }}
-                      className="block w-full p-3 sm:p-3 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F] bg-white text-base sm:text-base"
-                      required
-                      style={{ minHeight: '48px' }}
-                    >
-                      <option value="" className="text-[#1F1F1F] bg-white">Wählen Sie eine genutzte Dienstleistung...</option>
-                      {eligibleReviews.map((service, index) => (
-                        <option 
-                          key={index} 
-                          value={`${service.bookingId}-${service.serviceName}-${service.employeeName}`}
-                          className="text-[#1F1F1F] bg-white"
-                        >
-                          {service.serviceName} bei {service.employeeName} (am {service.date} um {service.time})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {selectedReviewableService && (
-                  <form onSubmit={handleReviewSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-[#1F1F1F] mb-2">Bewertung</label>
-                      <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onClick={() => setReviewFormData(prev => ({ ...prev, rating: star }))}
-                            className="focus:outline-none"
-                          >
-                            <FiStar 
-                              className={`w-8 h-8 ${star <= reviewFormData.rating ? 'text-[#9DBE8D] fill-current' : 'text-gray-300'}`} 
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-[#1F1F1F] mb-2">Ihre Rezension</label>
-                      <textarea
-                        value={reviewFormData.comment}
-                        onChange={(e) => setReviewFormData(prev => ({ ...prev, comment: e.target.value }))}
-                        className="w-full p-3 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F]"
-                        rows={4}
-                        placeholder={`Teilen Sie Ihre Erfahrung mit ${selectedReviewableService.serviceName} bei ${selectedReviewableService.employeeName}...`}
-                        required
-                      />
-                    </div>
-                    
-                    <div className="bg-[#E4DED5] p-3 rounded-lg">
-                      <p className="text-sm text-[#1F1F1F]">
-                        <strong>Dienstleistung:</strong> {selectedReviewableService.serviceName}<br/>
-                        <strong>Mitarbeiter:</strong> {selectedReviewableService.employeeName}<br/>
-                        <strong>Datum:</strong> {selectedReviewableService.date} um {selectedReviewableService.time}
-                      </p>
-                    </div>
-                    
-                    <div className="flex gap-3">
-                      <button
-                        type="submit"
-                        className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold py-2 px-4 sm:px-6 rounded-lg transition-all duration-200 text-sm sm:text-base w-full"
-                      >
-                        Bewertung abschicken
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedReviewableService(null);
-                          setReviewFormData({ rating: 5, comment: "", serviceName: "", employeeName: "" });
-                        }}
-                        className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2 px-4 sm:px-6 rounded-lg transition-all duration-200 text-sm sm:text-base w-full"
-                      >
-                        Abbrechen
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            )}
-
-            {/* Edit Review Form */}
-            {user && editingReview && (
-              <div className="bg-white rounded-lg border border-[#E4DED5] p-4 sm:p-6 mb-4 sm:mb-8">
-                <h3 className="text-xl font-semibold text-[#1F1F1F] mb-4">Rezension bearbeiten</h3>
-                <form onSubmit={handleEditReview} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#1F1F1F] mb-2">Bewertung</label>
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setReviewFormData(prev => ({ ...prev, rating: star }))}
-                          className="focus:outline-none"
-                        >
-                          <FiStar 
-                            className={`w-8 h-8 ${star <= reviewFormData.rating ? 'text-[#9DBE8D] fill-current' : 'text-gray-300'}`} 
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-[#1F1F1F] mb-2">Ihre Rezension</label>
-                    <textarea
-                      value={reviewFormData.comment}
-                      onChange={(e) => setReviewFormData(prev => ({ ...prev, comment: e.target.value }))}
-                      className="w-full p-3 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F]"
-                      rows={4}
-                      placeholder="Teilen Sie Ihre Erfahrung..."
-                      required
-                    />
-                  </div>
-                  
-                  <div className="bg-[#E4DED5] p-3 rounded-lg">
-                    <p className="text-sm text-[#1F1F1F]">
-                      <strong>Dienstleistung:</strong> {editingReview.serviceName}<br/>
-                      <strong>Mitarbeiter:</strong> {editingReview.employeeName}
-                    </p>
-                  </div>
-                  
-                  <div className="flex gap-3">
-                    <button
-                      type="submit"
-                      className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold py-2 px-4 sm:px-6 rounded-lg transition-all duration-200 text-sm sm:text-base w-full"
-                    >
-                      Rezension aktualisieren
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingReview(null);
-                        setReviewFormData({ rating: 5, comment: "", serviceName: "", employeeName: "" });
-                      }}
-                      className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2 px-4 sm:px-6 rounded-lg transition-all duration-200 text-sm sm:text-base w-full"
-                    >
-                      Abbrechen
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteReview(editingReview._id)}
-                      className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 sm:px-6 rounded-lg transition-all duration-200 flex items-center gap-2 w-full"
-                    >
-                      <FiTrash2 className="w-4 h-4" />
-                      Löschen
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
+            {/* Reviews are submitted from the order tracking page */}
           </div>
 
           {/* Reviews List */}
@@ -904,36 +598,13 @@ export default function SalonPage() {
                         </div>
                       </div>
                     </div>
-                    {user?.uid === review.customerUid && (
-                      <button
-                        onClick={() => {
-                          setEditingReview(review);
-                          setReviewFormData({
-                            rating: review.rating,
-                            comment: review.comment,
-                            serviceName: review.serviceName,
-                            employeeName: review.employeeName
-                          });
-                        }}
-                        className="text-[#5C6F68] hover:text-[#4a5a54] p-1 sm:p-2"
-                      >
-                        <FiEdit className="w-3 h-3 sm:w-4 sm:h-4" />
-                      </button>
-                    )}
                   </div>
                   <p className="text-[#1F1F1F] mb-2 sm:mb-3 text-sm sm:text-base">{review.comment}</p>
-                  {(review.serviceName || review.employeeName) && (
+                  {review.serviceName && (
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs sm:text-sm text-[#1F1F1F]">
-                      {review.serviceName && (
-                        <span className="bg-[#E4DED5] px-2 sm:px-3 py-1 rounded-full">
-                          Dienstleistung: {review.serviceName}
-                        </span>
-                      )}
-                      {review.employeeName && (
-                        <span className="bg-[#E4DED5] px-2 sm:px-3 py-1 rounded-full">
-                          Mitarbeiter: {review.employeeName}
-                        </span>
-                      )}
+                      <span className="bg-[#E4DED5] px-2 sm:px-3 py-1 rounded-full">
+                        Produkt: {review.serviceName}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -968,14 +639,14 @@ export default function SalonPage() {
               <button
                 className="ml-2 text-[#5C6F68] hover:text-[#1F1F1F] font-semibold px-1 sm:px-2 py-0 sm:py-1 rounded text-sm"
                 onClick={() => setShowCartDropdown(v => !v)}
-                aria-label="Ausgewählte Dienstleistungen anzeigen"
+                aria-label="Ausgewählte Produkte anzeigen"
                 type="button"
               >
                 {showCartDropdown ? "▲" : "▼"}
               </button>
             </div>
             <div className="w-full text-xs sm:text-sm text-gray-700 mt-1 mb-2 text-center">
-              {cartServices.length} Dienstleistung{cartServices.length > 1 ? "en" : ""}
+              {cartServices.length} Produkt{cartServices.length > 1 ? "e" : ""}
             </div>
             {/* Dropdown list */}
             {showCartDropdown && (
@@ -1009,7 +680,7 @@ export default function SalonPage() {
               className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold py-2 sm:py-2 px-4 sm:px-6 rounded-lg transition-all duration-200 w-full text-sm sm:text-base"
               onClick={proceedToBooking}
             >
-              Weiter zur Buchung ({cartServices.length})
+              Weiter zur Anfrage ({cartServices.length})
             </button>
           </div>
         )}
@@ -1039,7 +710,7 @@ export default function SalonPage() {
                 <p className="text-gray-700 text-base">{detailsService.description}</p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#1F1F1F] mb-2">Bewertungen für diese Dienstleistung</h3>
+                <h3 className="text-lg font-semibold text-[#1F1F1F] mb-2">Bewertungen für dieses Produkt</h3>
                 {serviceReviews.length > 0 ? (
                   <div className="space-y-3 max-h-60 overflow-y-auto">
                     {serviceReviews.map((review) => (
@@ -1058,13 +729,13 @@ export default function SalonPage() {
                         </div>
                         <div className="text-[#1F1F1F] text-sm">{review.comment}</div>
                         {review.employeeName && (
-                          <div className="text-xs text-gray-600 mt-1">bei {review.employeeName}</div>
+                          <div className="text-xs text-gray-600 mt-1">Produkt: {review.employeeName}</div>
                         )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-gray-500 text-sm">Noch keine Bewertungen für diese Dienstleistung.</div>
+                  <div className="text-gray-500 text-sm">Noch keine Bewertungen für dieses Produkt.</div>
                 )}
               </div>
             </div>

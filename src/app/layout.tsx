@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "mollytime",
-  description: "Salon-Buchungsplattform",
+  description: "Dein diskreter Marktplatz für exklusive Artikel",
 };
 
 export default function RootLayout({

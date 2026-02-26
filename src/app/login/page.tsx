@@ -10,7 +10,7 @@ const COLORS = {
 };
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,10 +21,15 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
+      // Determine if identifier is email or username
+      const isEmail = identifier.includes('@');
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ 
+          ...(isEmail ? { email: identifier } : { username: identifier }), 
+          password 
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -33,6 +38,7 @@ export default function LoginPage() {
       }
 
       localStorage.setItem("userEmail", data.email ?? "");
+      localStorage.setItem("userName", data.name ?? data.username ?? "");
 
       if (data.role === "admin") {
         window.location.href = "/system/admin";
@@ -91,7 +97,7 @@ export default function LoginPage() {
             letterSpacing: -1,
           }}
         >
-          bookme
+          mollytime
         </div>
         <div
           style={{
@@ -118,12 +124,12 @@ export default function LoginPage() {
           </div>
         )}
         <label style={{ color: COLORS.text, fontWeight: 500, fontSize: "1rem" }}>
-          E-Mail
+          Benutzername oder E-Mail
           <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Ihre E-Mail"
+            type="text"
+            value={identifier}
+            onChange={e => setIdentifier(e.target.value)}
+            placeholder="Benutzername oder E-Mail"
             style={{
               marginTop: 6,
               width: "100%",

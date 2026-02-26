@@ -111,12 +111,12 @@ export default function AdminDashboard() {
           // Only consider completed, cancelled, and no-show for stats
           const userBookings = allBookings.filter((b: any) =>
             b.customerUid === user.uid &&
-            (b.status === 'completed' || b.status === 'cancelled' || b.status === 'no-show')
+            (b.status === 'completed' || b.status === 'cancelled' || b.status === 'rejected')
           );
           
           const completed = userBookings.filter((b: any) => b.status === 'completed').length;
           const cancelled = userBookings.filter((b: any) => b.status === 'cancelled').length;
-          const noShow = userBookings.filter((b: any) => b.status === 'no-show').length;
+          const noShow = userBookings.filter((b: any) => b.status === 'rejected').length;
           const total = userBookings.length;
           
           // New rating system: completed = 5 stars, cancelled/no-show = 1 star, average
@@ -125,7 +125,7 @@ export default function AdminDashboard() {
             let totalStars = 0;
             userBookings.forEach((b: any) => {
               if (b.status === 'completed') totalStars += 5;
-              else if (b.status === 'cancelled' || b.status === 'no-show') totalStars += 1;
+              else if (b.status === 'cancelled' || b.status === 'rejected') totalStars += 1;
             });
             rating = Math.round(totalStars / total);
             rating = Math.max(1, Math.min(5, rating));
@@ -177,7 +177,7 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteSalon = async (email: string) => {
-    if (!confirm(`Salon mit E-Mail ${email} wirklich löschen?`)) return;
+    if (!confirm(`Verkäufer mit E-Mail ${email} wirklich löschen?`)) return;
     setDeleteStatus(null);
     try {
       const res = await fetch("/api/salons", {
@@ -186,14 +186,14 @@ export default function AdminDashboard() {
         body: JSON.stringify({ email }),
       });
       if (res.ok) {
-        setDeleteStatus("Salon erfolgreich gelöscht.");
+        setDeleteStatus("Verkäufer erfolgreich gelöscht.");
         fetchSalonsAndUsers();
       } else {
         const errMsg = await res.text();
-        setDeleteStatus(`Fehler beim Löschen des Salons. ${errMsg}`);
+        setDeleteStatus(`Fehler beim Löschen des Verkäufers. ${errMsg}`);
       }
     } catch (error: any) {
-      setDeleteStatus(`Fehler beim Löschen des Salons. ${error?.message || ""}`);
+      setDeleteStatus(`Fehler beim Löschen des Verkäufers. ${error?.message || ""}`);
     }
   };
 
@@ -263,17 +263,17 @@ export default function AdminDashboard() {
           throw new Error("API endpoint /api/salons nicht gefunden.");
         }
         const errMsg = await salonRes.text();
-        throw new Error(errMsg || "Fehler beim Erstellen des Salons.");
+        throw new Error(errMsg || "Fehler beim Erstellen des Verkäufers.");
       }
 
-      setCreateStatus("Salon-Benutzer erfolgreich erstellt.");
+      setCreateStatus("Verkäufer-Account erfolgreich erstellt.");
       setSalonEmail("");
       setSalonPassword("");
     } catch (err: any) {
-      let msg = "Fehler beim Erstellen des Salon-Benutzers.";
+      let msg = "Fehler beim Erstellen des Verkäufer-Accounts.";
       if (err?.message?.includes("Salon already exists")) {
         // Treat as success if salon already exists
-        msg = "Salon-Benutzer erfolgreich erstellt.";
+        msg = "Verkäufer-Account erfolgreich erstellt.";
       } else if (err?.message) {
         msg = err.message;
       }
@@ -293,13 +293,13 @@ export default function AdminDashboard() {
       });
       
       if (res.ok) {
-        setDeleteStatus(`Buchungsstatus zu "${newStatus}" geändert.`);
+        setDeleteStatus(`Bestellstatus zu "${newStatus}" geändert.`);
         fetchAllBookings(); // Refresh bookings list
       } else {
-        setDeleteStatus("Fehler beim Ändern des Buchungsstatus.");
+        setDeleteStatus("Fehler beim Ändern des Bestellstatus.");
       }
     } catch (error) {
-      setDeleteStatus("Fehler beim Ändern des Buchungsstatus.");
+      setDeleteStatus("Fehler beim Ändern des Bestellstatus.");
     }
   };
 
@@ -473,7 +473,7 @@ export default function AdminDashboard() {
   const statCards = [
     {
       id: "salons",
-      title: "Salons",
+      title: "Verkäufer",
       value: salons.length,
       icon: (
         <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -493,7 +493,7 @@ export default function AdminDashboard() {
     },
     {
       id: "bookings",
-      title: "Buchungen",
+      title: "Bestellungen",
       value: allBookings.length,
       icon: (
         <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -549,7 +549,7 @@ export default function AdminDashboard() {
             Willkommen, System-Admin
           </h1>
           <p style={{ color: "#666", fontSize: "1.05rem" }}>
-            Übersicht & Verwaltung aller Salons, Benutzer, Buchungen und Pläne
+            Übersicht & Verwaltung aller Verkäufer, Benutzer, Bestellungen und Pläne
           </p>
         </div>
 
@@ -1135,7 +1135,7 @@ export default function AdminDashboard() {
             letterSpacing: -0.5,
           }}
         >
-          Neuen Salon-Account anlegen
+          Neuen Verkäufer-Account anlegen
         </h2>
         <form
           onSubmit={handleCreateSalonUser}
@@ -1149,7 +1149,7 @@ export default function AdminDashboard() {
         >
           <input
             type="email"
-            placeholder="Salon E-Mail"
+            placeholder="Verkäufer E-Mail"
             value={salonEmail}
             onChange={(e) => setSalonEmail(e.target.value)}
             style={{
@@ -1196,7 +1196,7 @@ export default function AdminDashboard() {
               boxShadow: "0 1px 4px #5C6F6810",
             }}
           >
-            Salon-Account erstellen
+            Verkäufer-Account erstellen
           </button>
         </form>
         {createStatus && (
@@ -1239,7 +1239,7 @@ export default function AdminDashboard() {
             letterSpacing: -0.5,
           }}
         >
-          Salon-Verwaltung
+          Verkäufer-Verwaltung
         </h2>
         <button
           onClick={() => setShowSalonList(!showSalonList)}
@@ -1259,7 +1259,7 @@ export default function AdminDashboard() {
           onMouseOver={(e) => e.currentTarget.style.background = "#4a5a54"}
           onMouseOut={(e) => e.currentTarget.style.background = COLORS.primary}
         >
-          {showSalonList ? "Salon-Liste verstecken" : "Alle Salons anzeigen"}
+          {showSalonList ? "Verkäufer-Liste verstecken" : "Alle Verkäufer anzeigen"}
         </button>
 
         {showSalonList && (
@@ -1276,7 +1276,7 @@ export default function AdminDashboard() {
               color: "#000",
               marginBottom: 16,
             }}>
-              Registrierte Salons ({allSalons.length})
+              Registrierte Verkäufer ({allSalons.length})
             </h3>
             {/* Salon search input */}
             <div style={{ display: "flex", gap: "8px", marginBottom: 16, flexWrap: "wrap" }}>
@@ -1312,7 +1312,7 @@ export default function AdminDashboard() {
               />
             </div>
             {allSalons.length === 0 ? (
-              <p style={{ color: "#666", fontStyle: "italic" }}>Keine Salons gefunden.</p>
+              <p style={{ color: "#666", fontStyle: "italic" }}>Keine Verkäufer gefunden.</p>
             ) : (
               <div style={{ display: "grid", gap: "12px" }}>
                 {allSalons.map((salon, idx) => (
@@ -1337,7 +1337,28 @@ export default function AdminDashboard() {
                         marginBottom: 4,
                         fontSize: "1rem",
                       }}>
-                        {salon.name || "Unbekannter Salon"}
+                        {salon.name || "Unbekannter Verkäufer"}
+                        {salon.verified ? (
+                          <span style={{
+                            marginLeft: 8,
+                            padding: "2px 8px",
+                            borderRadius: 12,
+                            fontSize: "0.75rem",
+                            fontWeight: 500,
+                            background: "#dcfce7",
+                            color: "#166534",
+                          }}>✓ Verifiziert</span>
+                        ) : (
+                          <span style={{
+                            marginLeft: 8,
+                            padding: "2px 8px",
+                            borderRadius: 12,
+                            fontSize: "0.75rem",
+                            fontWeight: 500,
+                            background: "#fed7aa",
+                            color: "#9a3412",
+                          }}>Nicht verifiziert</span>
+                        )}
                       </h4>
                       <p style={{
                         color: "#666",
@@ -1418,9 +1439,9 @@ export default function AdminDashboard() {
                         onMouseOver={(e) => e.currentTarget.style.background = "#8aa97a"}
                         onMouseOut={(e) => e.currentTarget.style.background = COLORS.highlight}
                         disabled={!salon.uid}
-                        title={!salon.uid ? "Keine Analytics verfügbar (UID fehlt)" : "Salon Inhaberseite öffnen"}
+                        title={!salon.uid ? "Keine Analytics verfügbar (UID fehlt)" : "Verkäufer-Dashboard öffnen"}
                       >
-                        🏢 Salon Inhaberseite
+                        🏢 Verkäufer-Dashboard
                       </button>
                       <button
                         onClick={() => window.open(`/salon/${salon.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")}`, '_blank')}
@@ -1438,7 +1459,7 @@ export default function AdminDashboard() {
                         onMouseOver={(e) => e.currentTarget.style.background = "#4a5a54"}
                         onMouseOut={(e) => e.currentTarget.style.background = COLORS.primary}
                         disabled={!salon.name}
-                        title="Salon-Seite anzeigen"
+                        title="Verkäufer-Seite anzeigen"
                       >
                         👁️ Ansehen
                       </button>
@@ -1455,9 +1476,42 @@ export default function AdminDashboard() {
                           cursor: "pointer",
                           transition: "background 0.2s",
                         }}
-                        title="Salon löschen"
+                        title="Verkäufer löschen"
                       >
                         🗑️ Löschen
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch("/api/salons", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ email: salon.email, verified: !salon.verified })
+                            });
+                            if (res.ok) {
+                              setDeleteStatus(salon.verified ? "Verifizierung entfernt." : "Verkäufer verifiziert.");
+                              fetchSalonsAndUsers();
+                            } else {
+                              setDeleteStatus("Fehler beim Ändern des Verifizierungsstatus.");
+                            }
+                          } catch (error) {
+                            setDeleteStatus("Fehler beim Ändern des Verifizierungsstatus.");
+                          }
+                        }}
+                        style={{
+                          background: salon.verified ? "#f59e0b" : "#22c55e",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "0.5rem 1rem",
+                          fontWeight: 500,
+                          fontSize: "0.9rem",
+                          cursor: "pointer",
+                          transition: "background 0.2s",
+                        }}
+                        title={salon.verified ? "Verifizierung entfernen" : "Verkäufer verifizieren"}
+                      >
+                        {salon.verified ? "✘ Verifizierung entfernen" : "✔ Verifizieren"}
                       </button>
                     </div>
                   </div>
@@ -1476,7 +1530,7 @@ export default function AdminDashboard() {
                       color: "#000",
                       marginBottom: 16,
                     }}>
-                      Plan-Management für Salons
+                      Plan-Management für Verkäufer
                     </h3>
                     {allSalons.map(salon => (
                       <div key={salon._id} style={{
@@ -1580,7 +1634,7 @@ export default function AdminDashboard() {
               color: "#000",
               marginBottom: 16,
             }}>
-              Registrierte Kunden ({users.filter(u => !u.role && (!userSearch || u.email?.toLowerCase().includes(userSearch.toLowerCase()))).length})
+              Registrierte Käufer ({users.filter(u => !u.role && (!userSearch || u.email?.toLowerCase().includes(userSearch.toLowerCase()))).length})
             </h3>
             {/* User search input */}
             <div style={{ display: "flex", gap: "8px", marginBottom: 16, flexWrap: "wrap" }}>
@@ -1602,7 +1656,7 @@ export default function AdminDashboard() {
               />
             </div>
             {users.filter(u => !u.role && (!userSearch || u.email?.toLowerCase().includes(userSearch.toLowerCase()))).length === 0 ? (
-              <p style={{ color: "#666", fontStyle: "italic" }}>Keine Benutzer gefunden.</p>
+              <p style={{ color: "#666", fontStyle: "italic" }}>Keine Käufer gefunden.</p>
             ) : (
               <div style={{ display: "grid", gap: "12px" }}>
                 {users
@@ -1640,7 +1694,7 @@ export default function AdminDashboard() {
                               fontSize: "1rem",
                               margin: 0,
                             }}>
-                              {user.email || "Unbekannter Benutzer"}
+                              {user.email || "Unbekannter Käufer"}
                             </h4>
                             <div style={{
                               padding: "2px 8px",
@@ -1690,7 +1744,7 @@ export default function AdminDashboard() {
                               <span>📅 Gesamt: {stats.total}</span>
                               <span style={{ color: "#22c55e" }}>✅ Abgeschlossen: {stats.completed}</span>
                               <span style={{ color: "#f59e0b" }}>❌ Storniert: {stats.cancelled}</span>
-                              <span style={{ color: "#ef4444" }}>🚫 Nicht erschienen: {stats.noShow}</span>
+                              <span style={{ color: "#ef4444" }}>🚫 Abgelehnt: {stats.noShow}</span>
                             </div>
                             {stats.total > 0 && (
                               <div style={{
@@ -1742,9 +1796,9 @@ export default function AdminDashboard() {
                               cursor: "pointer",
                               transition: "background 0.2s",
                             }}
-                            title="Buchungshistorie anzeigen"
+                            title="Bestellhistorie anzeigen"
                           >
-                            📖 Buchungshistorie
+                            📖 Bestellhistorie
                           </button>
                         </div>
                       </div>
@@ -1786,7 +1840,7 @@ export default function AdminDashboard() {
                 marginBottom: 20,
               }}>
                 <h3 style={{ fontSize: "1.2rem", fontWeight: 600, color: "#000", margin: 0 }}>
-                  Buchungshistorie für {historyUser.email}
+                  Bestellhistorie für {historyUser.email}
                 </h3>
                 <button
                   onClick={() => setShowUserHistoryModal(false)}
@@ -1810,7 +1864,7 @@ export default function AdminDashboard() {
                     color: "#666",
                     fontStyle: "italic"
                   }}>
-                    <div>Lade Buchungen...</div>
+                    <div>Lade Bestellungen...</div>
                     <button
                       onClick={fetchAllBookings}
                       style={{
@@ -1823,12 +1877,12 @@ export default function AdminDashboard() {
                         cursor: "pointer",
                       }}
                     >
-                      Buchungen laden
+                      Bestellungen laden
                     </button>
                   </div>
                 ) : getUserBookings(historyUser).length === 0 ? (
                   <div style={{ color: "#666", fontStyle: "italic", marginBottom: 16 }}>
-                    Keine Buchungen für diesen Benutzer gefunden.
+                    Keine Bestellungen für diesen Käufer gefunden.
                   </div>
                 ) : (
                   getUserBookings(historyUser)
@@ -1842,13 +1896,13 @@ export default function AdminDashboard() {
                       marginBottom: "8px"
                     }}>
                       <div style={{ fontWeight: 600, color: "#000" }}>
-                        {booking.date} um {booking.time}
+                        {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString('de-DE') : booking.date}
                       </div>
                       <div style={{ fontSize: "0.95rem", color: "#333" }}>
-                        Salon: {booking.salonInfo?.name || booking.salonName || "Unbekannt"}
+                        Verkäufer: {booking.salonInfo?.name || booking.salonName || "Unbekannt"}
                       </div>
                       <div style={{ fontSize: "0.95rem", color: "#333" }}>
-                        Services: {booking.services?.map((s: any) => s.name).join(', ') || booking.service || 'Keine Services'}
+                        Produkte: {booking.services?.map((s: any) => s.name).join(', ') || booking.service || 'Keine Produkte'}
                       </div>
                       <div style={{ fontSize: "0.95rem", color: "#333" }}>
                         Status: <span style={{
@@ -1856,22 +1910,34 @@ export default function AdminDashboard() {
                           borderRadius: 3,
                           fontSize: "0.8rem",
                           background: booking.status === 'completed' ? '#dcfce7' : 
-                                     booking.status === 'confirmed' ? '#dbeafe' :
+                                     booking.status === 'accepted' ? '#dbeafe' :
                                      booking.status === 'cancelled' ? '#fee2e2' :
-                                     booking.status === 'no-show' ? '#fef3c7' : '#f3f4f6',
+                                     booking.status === 'rejected' ? '#fef3c7' :
+                                     booking.status === 'pending' ? '#f3f4f6' :
+                                     booking.status === 'payment_pending' ? '#fef9c3' :
+                                     booking.status === 'shipped' ? '#e0e7ff' : '#f3f4f6',
                           color: booking.status === 'completed' ? '#166534' : 
-                                 booking.status === 'confirmed' ? '#1e40af' :
+                                 booking.status === 'accepted' ? '#1e40af' :
                                  booking.status === 'cancelled' ? '#dc2626' :
-                                 booking.status === 'no-show' ? '#d97706' : '#374151',
+                                 booking.status === 'rejected' ? '#d97706' :
+                                 booking.status === 'pending' ? '#374151' :
+                                 booking.status === 'payment_pending' ? '#92400e' :
+                                 booking.status === 'shipped' ? '#3730a3' : '#374151',
                         }}>
-                          {booking.status || 'unbekannt'}
+                          {booking.status === 'completed' ? 'Abgeschlossen' :
+                           booking.status === 'accepted' ? 'Angenommen' :
+                           booking.status === 'cancelled' ? 'Storniert' :
+                           booking.status === 'rejected' ? 'Abgelehnt' :
+                           booking.status === 'pending' ? 'Ausstehend' :
+                           booking.status === 'payment_pending' ? 'Zahlung ausstehend' :
+                           booking.status === 'shipped' ? 'Versendet' : booking.status}
                         </span>
                       </div>
                       <div style={{ fontSize: "0.95rem", color: "#333" }}>
                         Gesamt: €{booking.total || booking.price || 0}
                       </div>
                       <div style={{ fontSize: "0.8rem", color: "#666", marginTop: 4 }}>
-                        Gebucht am: {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString('de-DE') : 'Unbekannt'}
+                        Bestellt am: {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString('de-DE') : 'Unbekannt'}
                       </div>
                     </div>
                   ))
@@ -1891,7 +1957,7 @@ export default function AdminDashboard() {
             letterSpacing: -0.5,
           }}
         >
-          Buchungsüberwachung
+          Bestell-Überwachung
         </h2>
         <button
           onClick={() => {
@@ -1916,7 +1982,7 @@ export default function AdminDashboard() {
           onMouseOver={(e) => e.currentTarget.style.background = "#4a5a54"}
           onMouseOut={(e) => e.currentTarget.style.background = COLORS.primary}
         >
-          {showAllBookings ? "Buchungen verstecken" : "Alle Buchungen anzeigen"}
+          {showAllBookings ? "Bestellungen verstecken" : "Alle Bestellungen anzeigen"}
         </button>
 
         {showAllBookings && (
@@ -1933,7 +1999,7 @@ export default function AdminDashboard() {
               color: "#000",
               marginBottom: 16,
             }}>
-              Alle Buchungen ({filteredBookings.length})
+              Alle Bestellungen ({filteredBookings.length})
             </h3>
             
             {/* Filters */}
@@ -1945,7 +2011,7 @@ export default function AdminDashboard() {
             }}>
               <input
                 type="text"
-                placeholder="Suche nach Kunde, Salon oder Telefon..."
+                placeholder="Suche nach Käufer oder Verkäufer..."
                 value={bookingFilter}
                 onChange={e => setBookingFilter(e.target.value)}
                 style={{
@@ -1972,15 +2038,18 @@ export default function AdminDashboard() {
                 }}
               >
                 <option value="all">Alle Status</option>
-                <option value="confirmed">Bestätigt</option>
+                <option value="pending">Ausstehend</option>
+                <option value="accepted">Angenommen</option>
+                <option value="payment_pending">Zahlung ausstehend</option>
+                <option value="shipped">Versendet</option>
                 <option value="completed">Abgeschlossen</option>
+                <option value="rejected">Abgelehnt</option>
                 <option value="cancelled">Storniert</option>
-                <option value="no-show">Nicht erschienen</option>
               </select>
             </div>
 
             {filteredBookings.length === 0 ? (
-              <p style={{ color: "#666", fontStyle: "italic" }}>Keine Buchungen gefunden.</p>
+              <p style={{ color: "#666", fontStyle: "italic" }}>Keine Bestellungen gefunden.</p>
             ) : (
               <div style={{
                 maxHeight: "600px",
@@ -1997,9 +2066,9 @@ export default function AdminDashboard() {
                   <thead style={{ background: "#f1f5f9", position: "sticky", top: 0 }}>
                     <tr>
                       <th style={{ padding: "12px 8px", textAlign: "left", color: "#000", fontWeight: 600 }}>Datum/Zeit</th>
-                      <th style={{ padding: "12px 8px", textAlign: "left", color: "#000", fontWeight: 600 }}>Kunde</th>
-                      <th style={{ padding: "12px 8px", textAlign: "left", color: "#000", fontWeight: 600 }}>Salon</th>
-                      <th style={{ padding: "12px 8px", textAlign: "left", color: "#000", fontWeight: 600 }}>Service</th>
+                      <th style={{ padding: "12px 8px", textAlign: "left", color: "#000", fontWeight: 600 }}>Käufer</th>
+                      <th style={{ padding: "12px 8px", textAlign: "left", color: "#000", fontWeight: 600 }}>Verkäufer</th>
+                      <th style={{ padding: "12px 8px", textAlign: "left", color: "#000", fontWeight: 600 }}>Produkte</th>
                       <th style={{ padding: "12px 8px", textAlign: "left", color: "#000", fontWeight: 600 }}>Status</th>
                       <th style={{ padding: "12px 8px", textAlign: "left", color: "#000", fontWeight: 600 }}>Total</th>
                       <th style={{ padding: "12px 8px", textAlign: "center", color: "#000", fontWeight: 600 }}>Aktionen</th>
@@ -2024,7 +2093,7 @@ export default function AdminDashboard() {
                           <div style={{ fontSize: "0.75rem", color: "#666" }}>{booking.salonInfo?.email}</div>
                         </td>
                         <td style={{ padding: "8px", color: "#000" }}>
-                          {booking.services?.map((s: any) => s.name).join(', ') || 'Keine Services'}
+                          {booking.services?.map((s: any) => s.name).join(', ') || 'Keine Produkte'}
                         </td>
                         <td style={{ padding: "8px" }}>
                           <span style={{
@@ -2033,18 +2102,27 @@ export default function AdminDashboard() {
                             fontSize: "0.75rem",
                             fontWeight: 500,
                             background: booking.status === 'completed' ? '#dcfce7' : 
-                                       booking.status === 'confirmed' ? '#dbeafe' :
+                                       booking.status === 'accepted' ? '#dbeafe' :
                                        booking.status === 'cancelled' ? '#fee2e2' :
-                                       booking.status === 'no-show' ? '#fef3c7' : '#f3f4f6',
+                                       booking.status === 'rejected' ? '#fef3c7' :
+                                       booking.status === 'pending' ? '#f3f4f6' :
+                                       booking.status === 'payment_pending' ? '#fef9c3' :
+                                       booking.status === 'shipped' ? '#e0e7ff' : '#f3f4f6',
                             color: booking.status === 'completed' ? '#166534' : 
-                                   booking.status === 'confirmed' ? '#1e40af' :
+                                   booking.status === 'accepted' ? '#1e40af' :
                                    booking.status === 'cancelled' ? '#dc2626' :
-                                   booking.status === 'no-show' ? '#d97706' : '#374151',
+                                   booking.status === 'rejected' ? '#d97706' :
+                                   booking.status === 'pending' ? '#374151' :
+                                   booking.status === 'payment_pending' ? '#92400e' :
+                                   booking.status === 'shipped' ? '#3730a3' : '#374151',
                           }}>
                             {booking.status === 'completed' ? 'Abgeschlossen' :
-                             booking.status === 'confirmed' ? 'Bestätigt' :
+                             booking.status === 'accepted' ? 'Angenommen' :
                              booking.status === 'cancelled' ? 'Storniert' :
-                             booking.status === 'no-show' ? 'Nicht erschienen' : booking.status}
+                             booking.status === 'rejected' ? 'Abgelehnt' :
+                             booking.status === 'pending' ? 'Ausstehend' :
+                             booking.status === 'payment_pending' ? 'Zahlung ausstehend' :
+                             booking.status === 'shipped' ? 'Versendet' : booking.status}
                           </span>
                         </td>
                         <td style={{ padding: "8px", color: "#000", fontWeight: 500 }}>
@@ -2088,7 +2166,7 @@ export default function AdminDashboard() {
                                   ✓
                                 </button>
                                 <button
-                                  onClick={() => handleBookingStatusChange(booking._id, 'no-show')}
+                                  onClick={() => handleBookingStatusChange(booking._id, 'rejected')}
                                   style={{
                                     background: "#f59e0b",
                                     color: "#fff",
@@ -2101,6 +2179,21 @@ export default function AdminDashboard() {
                                   }}
                                 >
                                   ✗
+                                </button>
+                                <button
+                                  onClick={() => handleBookingStatusChange(booking._id, 'shipped')}
+                                  style={{
+                                    background: "#6366f1",
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: 4,
+                                    padding: "4px 8px",
+                                    fontSize: "0.75rem",
+                                    cursor: "pointer",
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  📦
                                 </button>
                               </>
                             )}
@@ -2146,7 +2239,7 @@ export default function AdminDashboard() {
                 marginBottom: 20,
               }}>
                 <h3 style={{ fontSize: "1.2rem", fontWeight: 600, color: "#000", margin: 0 }}>
-                  Buchungsdetails
+                  Bestelldetails
                 </h3>
                 <button
                   onClick={() => setShowBookingModal(false)}
@@ -2164,24 +2257,24 @@ export default function AdminDashboard() {
               
               <div style={{ display: "grid", gap: "16px" }}>
                 <div>
-                  <strong style={{ color: "#000" }}>Kunde:</strong>
+                  <strong style={{ color: "#000" }}>Käufer:</strong>
                   <div>{selectedBooking.customerName}</div>
                   <div style={{ fontSize: "0.9rem", color: "#666" }}>{selectedBooking.customerPhone}</div>
                 </div>
                 
                 <div>
-                  <strong style={{ color: "#000" }}>Salon:</strong>
+                  <strong style={{ color: "#000" }}>Verkäufer:</strong>
                   <div>{selectedBooking.salonInfo?.name}</div>
                   <div style={{ fontSize: "0.9rem", color: "#666" }}>{selectedBooking.salonInfo?.email}</div>
                 </div>
                 
                 <div>
                   <strong style={{ color: "#000" }}>Datum & Zeit:</strong>
-                  <div>{selectedBooking.date} um {selectedBooking.time}</div>
+                  <div>{selectedBooking.createdAt ? new Date(selectedBooking.createdAt).toLocaleDateString('de-DE') : selectedBooking.date}</div>
                 </div>
                 
                 <div>
-                  <strong style={{ color: "#000" }}>Services:</strong>
+                  <strong style={{ color: "#000" }}>Produkte:</strong>
                   {selectedBooking.services?.map((service: any, idx: number) => (
                     <div key={idx} style={{ marginLeft: "8px", marginTop: "4px" }}>
                       • {service.name} - €{service.price} ({service.employee || 'Nicht zugewiesen'})
@@ -2221,7 +2314,7 @@ export default function AdminDashboard() {
                 flexWrap: "wrap",
               }}>
                 <button
-                  onClick={() => handleBookingStatusChange(selectedBooking._id, 'confirmed')}
+                  onClick={() => handleBookingStatusChange(selectedBooking._id, 'accepted')}
                   style={{
                     background: "#3b82f6",
                     color: "#fff",
@@ -2233,7 +2326,7 @@ export default function AdminDashboard() {
                     fontWeight: 500,
                   }}
                 >
-                  Als bestätigt markieren
+                  Als angenommen markieren
                 </button>
                 <button
                   onClick={() => handleBookingStatusChange(selectedBooking._id, 'completed')}
@@ -2251,7 +2344,7 @@ export default function AdminDashboard() {
                   Als abgeschlossen markieren
                 </button>
                 <button
-                  onClick={() => handleBookingStatusChange(selectedBooking._id, 'no-show')}
+                  onClick={() => handleBookingStatusChange(selectedBooking._id, 'rejected')}
                   style={{
                     background: "#f59e0b",
                     color: "#fff",
@@ -2263,7 +2356,22 @@ export default function AdminDashboard() {
                     fontWeight: 500,
                   }}
                 >
-                  Als No-Show markieren
+                  Ablehnen
+                </button>
+                <button
+                  onClick={() => handleBookingStatusChange(selectedBooking._id, 'shipped')}
+                  style={{
+                    background: "#6366f1",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 6,
+                    padding: "8px 16px",
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                    fontWeight: 500,
+                  }}
+                >
+                  Als versendet markieren
                 </button>
                 <button
                   onClick={() => handleBookingStatusChange(selectedBooking._id, 'cancelled')}

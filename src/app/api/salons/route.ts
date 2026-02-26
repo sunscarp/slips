@@ -29,8 +29,15 @@ export async function POST(request: Request) {
       contact: data.contact ?? "",
       lat: typeof data.lat === "number" ? data.lat : undefined,
       lng: typeof data.lng === "number" ? data.lng : undefined,
+      // Seller profile fields
+      height: data.height ?? "",
+      weight: data.weight ?? "",
+      size: data.size ?? "",
+      hobbies: data.hobbies ?? "",
+      serviceHours: data.serviceHours ?? "",
+      verified: data.verified ?? false,
       createdAt: new Date(),
-      plan: data.plan || "founders", // Default plan for new salons
+      plan: data.plan || "founders",
     });
 
     await client.close();
@@ -97,7 +104,8 @@ export async function GET(request: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { email, name, imageUrl, imageUrls, description, location, contact, lat, lng, googleMapsAddress, gender, workingDays, holidays, employees, disableBookingHistory, storeCustomerAddress, plan } = await req.json();
+    const body = await req.json();
+    const { email, name, imageUrl, imageUrls, description, location, contact, lat, lng, googleMapsAddress, gender, workingDays, holidays, employees, disableBookingHistory, storeCustomerAddress, plan, height, weight, size, hobbies, serviceHours, verified, paymentInstructions } = body;
     if (!email) {
       return NextResponse.json({ error: 'Missing email' }, { status: 400 });
     }
@@ -105,57 +113,30 @@ export async function PATCH(req: Request) {
     const db = client.db(dbName);
     const salons = db.collection('salons');
     const updateFields: any = {};
-    if (typeof name === "string") {
-      updateFields.name = name;
-    }
-    if (Array.isArray(imageUrls)) {
-      updateFields.imageUrls = imageUrls;
-    } else if (typeof imageUrl === "string") {
-      updateFields.imageUrl = imageUrl;
-    }
-    if (typeof description === "string") {
-      updateFields.description = description;
-    }
-    if (typeof location === "string") {
-      updateFields.location = location;
-    }
-    if (typeof googleMapsAddress === "string") {
-      updateFields.googleMapsAddress = googleMapsAddress;
-    }
-    // Support updating salon gender
-    if (typeof gender === "string") {
-      updateFields.gender = gender;
-    }
-    if (typeof contact === "string") {
-      updateFields.contact = contact;
-    }
-    if (typeof lat === "number") {
-      updateFields.lat = lat;
-    }
-    if (typeof lng === "number") {
-      updateFields.lng = lng;
-    }
-    if (typeof workingDays === "object") {
-      updateFields.workingDays = workingDays;
-    }
-    if (Array.isArray(holidays)) {
-      updateFields.holidays = holidays;
-    }
-    if (Array.isArray(employees)) {
-      updateFields.employees = employees;
-    }
-    // Add disableBookingHistory toggle
-    if (typeof disableBookingHistory === "boolean") {
-      updateFields.disableBookingHistory = disableBookingHistory;
-    }
-    // Add storeCustomerAddress toggle
-    if (typeof storeCustomerAddress === "boolean") {
-      updateFields.storeCustomerAddress = storeCustomerAddress;
-    }
-    // Add plan field support
-    if (typeof plan === "string") {
-      updateFields.plan = plan;
-    }
+    if (typeof name === "string") updateFields.name = name;
+    if (Array.isArray(imageUrls)) updateFields.imageUrls = imageUrls;
+    else if (typeof imageUrl === "string") updateFields.imageUrl = imageUrl;
+    if (typeof description === "string") updateFields.description = description;
+    if (typeof location === "string") updateFields.location = location;
+    if (typeof googleMapsAddress === "string") updateFields.googleMapsAddress = googleMapsAddress;
+    if (typeof gender === "string") updateFields.gender = gender;
+    if (typeof contact === "string") updateFields.contact = contact;
+    if (typeof lat === "number") updateFields.lat = lat;
+    if (typeof lng === "number") updateFields.lng = lng;
+    if (typeof workingDays === "object") updateFields.workingDays = workingDays;
+    if (Array.isArray(holidays)) updateFields.holidays = holidays;
+    if (Array.isArray(employees)) updateFields.employees = employees;
+    if (typeof disableBookingHistory === "boolean") updateFields.disableBookingHistory = disableBookingHistory;
+    if (typeof storeCustomerAddress === "boolean") updateFields.storeCustomerAddress = storeCustomerAddress;
+    if (typeof plan === "string") updateFields.plan = plan;
+    // Seller profile fields
+    if (typeof height === "string") updateFields.height = height;
+    if (typeof weight === "string") updateFields.weight = weight;
+    if (typeof size === "string") updateFields.size = size;
+    if (typeof hobbies === "string") updateFields.hobbies = hobbies;
+    if (typeof serviceHours === "string") updateFields.serviceHours = serviceHours;
+    if (typeof verified === "boolean") updateFields.verified = verified;
+    if (typeof paymentInstructions === "string") updateFields.paymentInstructions = paymentInstructions;
     if (Object.keys(updateFields).length === 0) {
       await client.close();
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });

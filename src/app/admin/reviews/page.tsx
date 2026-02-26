@@ -331,7 +331,7 @@ export default function ReviewsPage() {
                 <span className="text-lg text-gray-600 block mt-1">(System-Ansicht für {salon?.name})</span>
               )}
             </h1>
-            <p className="text-gray-600">Verwalten und analysieren Sie Kundenfeedback für {salon?.name}</p>
+            <p className="text-gray-600">Verwalte Käufer-Feedback für {salon?.name}</p>
           </div>
 
           {/* Stats Grid */}
@@ -383,7 +383,7 @@ export default function ReviewsPage() {
             <div className="bg-white p-6 rounded-lg shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Top Dienstleistung</p>
+                  <p className="text-sm font-medium text-gray-500">Top Produkt</p>
                   <p className="mt-1 text-lg font-semibold text-gray-900">
                     {stats.topServices[0]?.name || 'Keine Daten'}
                   </p>
@@ -402,7 +402,7 @@ export default function ReviewsPage() {
             <div className="bg-white p-6 rounded-lg shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Top Mitarbeiter</p>
+                  <p className="text-sm font-medium text-gray-500">Top Käufer</p>
                   <p className="mt-1 text-lg font-semibold text-gray-900">
                     {stats.topEmployees[0]?.name || 'Keine Daten'}
                   </p>
@@ -446,7 +446,7 @@ export default function ReviewsPage() {
 
             {/* Top Services */}
             <section className="bg-white p-6 rounded-lg shadow-sm">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Top Dienstleistungen</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Top Produkte</h2>
               <div className="space-y-4">
                 {stats.topServices.slice(0, 5).map((service, index) => (
                   <div key={service.name} className="flex items-center justify-between">
@@ -461,14 +461,14 @@ export default function ReviewsPage() {
                   </div>
                 ))}
                 {stats.topServices.length === 0 && (
-                  <p className="text-gray-500 text-sm">Noch keine Dienstleistungsbewertungen</p>
+                  <p className="text-gray-500 text-sm">Noch keine Produktbewertungen</p>
                 )}
               </div>
             </section>
 
             {/* Top Employees */}
             <section className="bg-white p-6 rounded-lg shadow-sm">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Top Mitarbeiter</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Top Käufer</h2>
               <div className="space-y-4">
                 {stats.topEmployees.slice(0, 5).map((employee, index) => (
                   <div key={employee.name} className="flex items-center justify-between">
@@ -483,7 +483,7 @@ export default function ReviewsPage() {
                   </div>
                 ))}
                 {stats.topEmployees.length === 0 && (
-                  <p className="text-gray-500 text-sm">Noch keine Mitarbeiterbewertungen</p>
+                  <p className="text-gray-500 text-sm">Noch keine Käuferbewertungen</p>
                 )}
               </div>
             </section>
@@ -547,10 +547,7 @@ export default function ReviewsPage() {
                         
                         <div className="flex gap-4 text-sm">
                           <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                            Dienstleistung: {review.serviceName}
-                          </span>
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
-                            Mitarbeiter: {review.employeeName}
+                            Produkt: {review.serviceName}
                           </span>
                         </div>
                       </div>
@@ -598,7 +595,7 @@ const AuthPrompt = () => (
   <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
     <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">
       <h2 className="text-xl font-semibold text-gray-900 mb-2">Zugriff eingeschränkt</h2>
-      <p className="text-gray-600 mb-4">Bitte melden Sie sich an, um das Bewertungs-Dashboard zu sehen</p>
+      <p className="text-gray-600 mb-4">Bitte melden Sie sich an, um die Bewertungen zu sehen</p>
       <button className="bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-md">
         Anmelden
       </button>

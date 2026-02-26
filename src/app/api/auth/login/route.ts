@@ -9,19 +9,27 @@ const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { password } = body;
+    // Support login by username or email
+    const identifier = (body.username || body.email || '').toLowerCase().trim();
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'E-Mail und Passwort erforderlich.' }, { status: 400 });
+    if (!identifier || !password) {
+      return NextResponse.json({ error: 'Benutzername/E-Mail und Passwort erforderlich.' }, { status: 400 });
     }
 
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
-    const user = await db.collection('users').findOne({ email: email.toLowerCase().trim() });
+    
+    // Try to find by username first, then by email
+    let user = await db.collection('users').findOne({ username: identifier });
+    if (!user) {
+      user = await db.collection('users').findOne({ email: identifier });
+    }
     await client.close();
 
     if (!user) {
-      return NextResponse.json({ error: 'Kein Benutzer mit dieser E-Mail gefunden.' }, { status: 401 });
+      return NextResponse.json({ error: 'Benutzer nicht gefunden.' }, { status: 401 });
     }
 
     if (!user.passwordHash) {
@@ -35,9 +43,10 @@ export async function POST(request: Request) {
 
     const payload = {
       uid: user.uid,
-      email: user.email,
-      role: user.role ?? 'user',
-      name: user.name ?? '',
+      email: user.email || '',
+      username: user.username || '',
+      role: user.role ?? 'buyer',
+      name: user.name ?? user.username ?? '',
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });

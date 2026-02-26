@@ -9,7 +9,7 @@ const COLORS = {
 };
 
 type NavbarProps = {
-  user?: { email?: string | null };
+  user?: { email?: string | null; username?: string | null };
   onLogout?: () => void;
 };
 
@@ -136,7 +136,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
             transition: "background 0.2s",
           }}
         >
-          Entdecken
+          Marktplatz
         </a>
         <a
           href="/bookings"
@@ -153,7 +153,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
             transition: "background 0.2s",
           }}
         >
-          Ihre Buchungen
+          Meine Anfragen
         </a>
         {/* Only show Login/Register if NOT logged in */}
         {!user && (
@@ -205,11 +205,14 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                 height="32"
                 viewBox="0 0 24 24"
                 fill="#5C6F68"
-                style={{ marginRight: 8 }}
+                style={{ marginRight: 4 }}
               >
                 <circle cx="12" cy="8" r="4" />
                 <path d="M12 14c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4z" />
               </svg>
+              <span style={{ color: COLORS.primary, fontWeight: 500, fontSize: '0.9rem', fontFamily: 'Inter, sans-serif' }}>
+                {user.username || user.email || 'Konto'}
+              </span>
             </button>
             {dropdownOpen && (
               <div
@@ -313,7 +316,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                   borderBottom: "1px solid #f0f0f0",
                 }}
               >
-                Entdecken
+                Marktplatz
               </a>
               <a
                 href="/bookings"
@@ -329,7 +332,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                   borderBottom: user ? "1px solid #f0f0f0" : "none",
                 }}
               >
-                Ihre Buchungen
+                Meine Anfragen
               </a>
               
               {!user && (
@@ -369,23 +372,35 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
               )}
               
               {user && (
-                <button
-                  onClick={handleLogout}
-                  style={{
-                    width: "100%",
-                    background: "none",
-                    border: "none",
-                    color: "#b00",
-                    fontWeight: 500,
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: "1rem",
-                    padding: "12px 16px",
-                    textAlign: "left",
-                    cursor: "pointer",
-                  }}
-                >
-                  Abmelden
-                </button>
+                <>
+                  <div style={{
+                    padding: '12px 16px',
+                    color: COLORS.primary,
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    borderBottom: '1px solid #f0f0f0',
+                    fontFamily: 'Inter, sans-serif',
+                  }}>
+                    {user.username || user.email || 'Konto'}
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      width: "100%",
+                      background: "none",
+                      border: "none",
+                      color: "#b00",
+                      fontWeight: 500,
+                      fontFamily: "Inter, sans-serif",
+                      fontSize: "1rem",
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Abmelden
+                  </button>
+                </>
               )}
             </div>
           </div>
