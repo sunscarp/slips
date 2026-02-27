@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   const collection = db.collection("service");
 
   if (action === "add") {
-    const { name, description, price, pricePerBlock, priceBlockSize, duration, imageUrl, uid, serviceType, durationPrices } = body;
+    const { name, description, price, pricePerBlock, priceBlockSize, duration, imageUrl, uid, serviceType, durationPrices, timeWorn, additionalServices } = body;
     if (!uid) {
       await client.close();
       return NextResponse.json({ error: "Missing uid" }, { status: 400 });
@@ -42,7 +42,9 @@ export async function POST(req: NextRequest) {
       uid,
       salonName,
       serviceType,
-      durationPrices
+      durationPrices,
+      timeWorn: timeWorn !== undefined ? Number(timeWorn) : undefined,
+      additionalServices: Array.isArray(additionalServices) ? additionalServices : [],
     };
     await collection.insertOne(doc);
     // Increment productCount on the salon document
@@ -69,6 +71,10 @@ export async function POST(req: NextRequest) {
     if (updateData.pricePerBlock !== undefined) updateData.pricePerBlock = Number(updateData.pricePerBlock);
     if (updateData.priceBlockSize !== undefined) updateData.priceBlockSize = Number(updateData.priceBlockSize);
     if (updateData.duration !== undefined) updateData.duration = Number(updateData.duration);
+    if (updateData.timeWorn !== undefined) updateData.timeWorn = Number(updateData.timeWorn);
+    if (updateData.additionalServices !== undefined && Array.isArray(updateData.additionalServices)) {
+      updateData.additionalServices = updateData.additionalServices;
+    }
 
     await collection.updateOne(
       { _id: new ObjectId(_id), uid },

@@ -2,6 +2,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import { FiMessageSquare, FiSend, FiX, FiChevronLeft, FiAlertTriangle } from "react-icons/fi";
 
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 type Message = {
   _id?: string;
   bookingId: string;
@@ -14,8 +22,11 @@ type Message = {
 };
 
 type ChatConversation = {
-  bookingId: string;
+  bookingId: string;          // primary (most recent) bookingId
+  bookingIds: string[];       // all bookingIds with this party
+  otherPartyUid: string;      // UID of the other party (for grouping)
   otherPartyName: string;
+  sellerSlug?: string;
   lastMessage?: string;
   lastMessageTime?: string;
   unread?: boolean;
@@ -76,8 +87,13 @@ export default function ChatWidget({
       prevMsgCountRef.current = 0;
       lastMsgIdRef.current = undefined;
       setIsOpen(true);
-      setActiveBookingId(openBookingId);
-      fetchMessages(openBookingId);
+      // Find the grouped conversation that contains this bookingId
+      const conv = conversations.find(
+        (c) => c.bookingId === openBookingId || c.bookingIds.includes(openBookingId)
+      );
+      const resolvedId = conv?.bookingId || openBookingId;
+      setActiveBookingId(resolvedId);
+      fetchMessages(resolvedId);
       fetchConversations();
     }
   }, [openBookingId]);
@@ -96,20 +112,53 @@ export default function ChatWidget({
       const data = await res.json();
       if (data.bookings) {
         // Only keep bookings that are active or have had some activity
-        const convs: ChatConversation[] = data.bookings
-          .filter((b: any) => !["cancelled"].includes(b.status))
-          .map((b: any) => ({
-            bookingId: b._id,
-            otherPartyName:
-              userRole === "seller"
-                ? b.buyerName || b.customerName || "Käufer"
-                : b.sellerName || b.salonInfo?.name || b.sellerInfo?.name || "Verkäufer",
-            items: (b.items || b.services || []).map((s: any) => s.name).join(", "),
-            status: b.status,
-            lastMessage: "",
-            lastMessageTime: b.updatedAt || b.createdAt,
-          }));
-        setConversations(convs);
+        const activeBookings = data.bookings.filter((b: any) => !["cancelled"].includes(b.status));
+
+        // Group bookings by the other party's UID so there's only 1 chat per account
+        const grouped: Record<string, ChatConversation> = {};
+        for (const b of activeBookings) {
+          const sellerName = b.sellerName || b.salonInfo?.name || b.sellerInfo?.name || "Verkäufer";
+          const otherUid =
+            userRole === "seller"
+              ? b.buyerUid || b.customerUid || b.buyerEmail || b._id
+              : b.salonUid || b.sellerUid || b._id;
+
+          if (!grouped[otherUid]) {
+            grouped[otherUid] = {
+              bookingId: b._id,
+              bookingIds: [b._id],
+              otherPartyUid: otherUid,
+              otherPartyName:
+                userRole === "seller"
+                  ? b.buyerName || b.customerName || "Käufer"
+                  : sellerName,
+              sellerSlug: userRole !== "seller" ? slugify(sellerName) : undefined,
+              items: (b.items || b.services || []).map((s: any) => s.name).join(", "),
+              status: b.status,
+              lastMessage: "",
+              lastMessageTime: b.updatedAt || b.createdAt,
+            };
+          } else {
+            grouped[otherUid].bookingIds.push(b._id);
+            // Append items from additional bookings
+            const extraItems = (b.items || b.services || []).map((s: any) => s.name).join(", ");
+            if (extraItems) {
+              grouped[otherUid].items = grouped[otherUid].items
+                ? grouped[otherUid].items + ", " + extraItems
+                : extraItems;
+            }
+            // Keep most recent timestamp and use newest bookingId as primary
+            const existingTime = new Date(grouped[otherUid].lastMessageTime || 0).getTime();
+            const newTime = new Date(b.updatedAt || b.createdAt).getTime();
+            if (newTime > existingTime) {
+              grouped[otherUid].lastMessageTime = b.updatedAt || b.createdAt;
+              grouped[otherUid].bookingId = b._id;
+              grouped[otherUid].status = b.status;
+            }
+          }
+        }
+
+        setConversations(Object.values(grouped));
       }
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -118,24 +167,41 @@ export default function ChatWidget({
     }
   };
 
-  // Fetch messages for active conversation
+  // Fetch messages for active conversation (supports multiple bookingIds)
   const fetchMessages = async (bookingId: string, silent = false) => {
     if (!silent) setChatLoading(true);
     try {
-      const res = await fetch(`/api/messages?bookingId=${encodeURIComponent(bookingId)}`);
-      const data = await res.json();
-      const newMessages: Message[] = data.messages || [];
+      // Find the conversation to get all bookingIds for this grouped chat
+      const conv = conversations.find(
+        (c) => c.bookingId === bookingId || c.bookingIds.includes(bookingId)
+      );
+      const ids = conv?.bookingIds || [bookingId];
+
+      // Fetch messages for all bookingIds in parallel
+      const results = await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/messages?bookingId=${encodeURIComponent(id)}`)
+            .then((r) => r.json())
+            .then((d) => d.messages || [])
+            .catch(() => [])
+        )
+      );
+      const allMessages: Message[] = results.flat();
+      // Sort by createdAt ascending
+      allMessages.sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+
       if (silent) {
-        // Only update state when something actually changed — avoids re-renders that reset scroll
-        const latestId = newMessages[newMessages.length - 1]?._id;
+        const latestId = allMessages[allMessages.length - 1]?._id;
         if (latestId !== lastMsgIdRef.current) {
           lastMsgIdRef.current = latestId;
-          setMessages(newMessages);
+          setMessages(allMessages);
         }
       } else {
-        const latestId = newMessages[newMessages.length - 1]?._id;
+        const latestId = allMessages[allMessages.length - 1]?._id;
         lastMsgIdRef.current = latestId;
-        setMessages(newMessages);
+        setMessages(allMessages);
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -145,15 +211,20 @@ export default function ChatWidget({
     }
   };
 
-  // Send message
+  // Send message (uses the primary bookingId of the active grouped conversation)
   const sendMessage = async (text: string, type: string = "text") => {
     if (!activeBookingId || !text.trim()) return;
+    // Resolve to the primary bookingId of the grouped conversation
+    const conv = conversations.find(
+      (c) => c.bookingId === activeBookingId || c.bookingIds.includes(activeBookingId)
+    );
+    const primaryBookingId = conv?.bookingId || activeBookingId;
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          bookingId: activeBookingId,
+          bookingId: primaryBookingId,
           senderUid: userUid,
           senderName: userName,
           senderRole: userRole,
@@ -174,34 +245,42 @@ export default function ChatWidget({
 
   const handleSendPaymentInfo = async () => {
     if (!activeBookingId || !paymentInput.trim()) return;
+    const conv = conversations.find(
+      (c) => c.bookingId === activeBookingId || c.bookingIds.includes(activeBookingId)
+    );
+    const primaryBookingId = conv?.bookingId || activeBookingId;
     await sendMessage(paymentInput.trim(), "payment_info");
     // Also update booking status
     await fetch("/api/bookings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        bookingId: activeBookingId,
+        bookingId: primaryBookingId,
         status: "payment_pending",
         paymentInstructions: paymentInput.trim(),
       }),
     });
-    if (onSendPaymentInfo) onSendPaymentInfo(activeBookingId, paymentInput.trim());
+    if (onSendPaymentInfo) onSendPaymentInfo(primaryBookingId, paymentInput.trim());
     setPaymentInput("");
     setShowPaymentForm(false);
   };
 
   const handleConfirmPayment = async () => {
     if (!activeBookingId) return;
+    const conv = conversations.find(
+      (c) => c.bookingId === activeBookingId || c.bookingIds.includes(activeBookingId)
+    );
+    const primaryBookingId = conv?.bookingId || activeBookingId;
     await sendMessage("Zahlung erhalten ✓", "payment_confirmed");
     await fetch("/api/bookings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        bookingId: activeBookingId,
+        bookingId: primaryBookingId,
         status: "accepted",
       }),
     });
-    if (onConfirmPayment) onConfirmPayment(activeBookingId);
+    if (onConfirmPayment) onConfirmPayment(primaryBookingId);
   };
 
   // Open chat widget
@@ -253,37 +332,13 @@ export default function ChatWidget({
     }
   }, [activeBookingId, isOpen]);
 
-  const getStatusLabel = (status?: string) => {
-    switch (status) {
-      case "pending": return "Ausstehend";
-      case "accepted": return "Angenommen";
-      case "payment_pending": return "Zahlung ausst.";
-      case "shipped": return "Versendet";
-      case "completed": return "Abgeschlossen";
-      case "rejected": return "Abgelehnt";
-      default: return status || "";
-    }
-  };
-
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "accepted": return "bg-green-100 text-green-800";
-      case "payment_pending": return "bg-blue-100 text-blue-800";
-      case "shipped": return "bg-purple-100 text-purple-800";
-      case "completed": return "bg-emerald-100 text-emerald-800";
-      case "rejected": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
   return (
     <>
       {/* Floating Chat Button */}
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="fixed bottom-6 right-6 z-50 bg-[#5C6F68] hover:bg-[#4a5a54] text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-105"
+          className="fixed bottom-6 right-6 z-50 bg-[#F48FB1] hover:bg-[#EC407A] text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-105"
           aria-label="Chat öffnen"
         >
           <FiMessageSquare className="w-6 h-6" />
@@ -294,7 +349,7 @@ export default function ChatWidget({
       {isOpen && (
         <div className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 w-full sm:w-[400px] h-[100dvh] sm:h-[550px] sm:max-h-[80vh] flex flex-col bg-white sm:rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
           {/* Panel Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#5C6F68] text-white flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 bg-[#F48FB1] text-white flex-shrink-0">
             <div className="flex items-center gap-2">
               {activeBookingId && (
                 <button onClick={goBack} className="hover:bg-white/20 rounded p-1 transition">
@@ -303,7 +358,15 @@ export default function ChatWidget({
               )}
               <FiMessageSquare className="w-5 h-5" />
               <span className="font-semibold text-sm">
-                {activeBookingId ? (conversations.find(c => c.bookingId === activeBookingId)?.otherPartyName || "Chat") : "Nachrichten"}
+                {activeBookingId ? (
+                  (() => {
+                    const conv = conversations.find(c => c.bookingId === activeBookingId);
+                    const name = conv?.otherPartyName || "Chat";
+                    return conv?.sellerSlug ? (
+                      <a href={`/salon/${conv.sellerSlug}`} className="hover:underline">{name}</a>
+                    ) : name;
+                  })()
+                ) : "Nachrichten"}
               </span>
             </div>
             <button
@@ -335,16 +398,23 @@ export default function ChatWidget({
                     className="w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition flex items-start gap-3"
                   >
                     <div className="w-9 h-9 rounded-full bg-[#E4DED5] flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-[#5C6F68] font-bold text-sm">
+                      <span className="text-[#F48FB1] font-bold text-sm">
                         {(conv.otherPartyName || "?")[0].toUpperCase()}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-gray-900 text-sm truncate">{conv.otherPartyName}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${getStatusColor(conv.status)}`}>
-                          {getStatusLabel(conv.status)}
-                        </span>
+                        {conv.sellerSlug ? (
+                          <a
+                            href={`/salon/${conv.sellerSlug}`}
+                            className="font-semibold text-gray-900 text-sm truncate hover:underline hover:text-[#F48FB1] transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {conv.otherPartyName}
+                          </a>
+                        ) : (
+                          <span className="font-semibold text-gray-900 text-sm truncate">{conv.otherPartyName}</span>
+                        )}
                       </div>
                       {conv.items && (
                         <p className="text-xs text-gray-500 truncate mt-0.5">{conv.items}</p>
@@ -399,7 +469,7 @@ export default function ChatWidget({
                             : msg.type === "payment_confirmed"
                             ? "bg-green-50 text-green-900 border border-green-200"
                             : msg.senderRole === userRole
-                            ? "bg-[#5C6F68] text-white"
+                            ? "bg-[#F48FB1] text-white"
                             : "bg-gray-100 text-gray-900"
                         }`}
                       >
@@ -500,12 +570,12 @@ export default function ChatWidget({
                     }
                   }}
                   placeholder="Nachricht schreiben..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5C6F68]"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F48FB1]"
                 />
                 <button
                   onClick={() => sendMessage(chatInput)}
                   disabled={!chatInput.trim()}
-                  className="bg-[#5C6F68] text-white px-3 py-2 rounded-md hover:bg-[#4a5a54] disabled:opacity-50 transition"
+                  className="bg-[#F48FB1] text-white px-3 py-2 rounded-md hover:bg-[#EC407A] disabled:opacity-50 transition"
                 >
                   <FiSend className="w-4 h-4" />
                 </button>

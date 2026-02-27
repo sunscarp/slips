@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
 };
 
 const NAV_LINKS = [
@@ -130,12 +130,12 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
               fontFamily: "'Poppins', sans-serif",
               fontWeight: 700,
               fontSize: "2rem",
-              color: "#5C6F68",
+              color: "#F48FB1",
               textDecoration: "none",
               letterSpacing: -1,
             }}
           >
-            mollytime
+            tastyslips
           </a>
           
           {/* Desktop Navigation */}
@@ -151,13 +151,14 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
                 key={link.href}
                 href={link.href}
                 style={{
-                  color: "#5C6F68",
+                  color:
+                    path === link.href || path.startsWith(link.href.split('?')[0]) ? "#fff" : "#F48FB1",
                   textDecoration: "none",
                   fontWeight: 500,
                   fontSize: "1rem",
                   padding: "0.3rem 0.7rem",
                   borderRadius: 6,
-                  transition: "background 0.15s",
+                  transition: "background 0.15s, color 0.15s",
                   background:
                     path === link.href || path.startsWith(link.href.split('?')[0]) ? COLORS.highlight : "transparent",
                 }}
@@ -177,7 +178,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
                   href="/login"
                   style={{
                     marginRight: 18,
-                    color: "#5C6F68",
+                    color: "#F48FB1",
                     fontWeight: 500,
                     textDecoration: "none",
                   }}
@@ -187,7 +188,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
                 <a
                   href="/register"
                   style={{
-                    color: "#5C6F68",
+                    color: "#F48FB1",
                     fontWeight: 500,
                     textDecoration: "none",
                   }}
@@ -216,7 +217,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
                     width="32"
                     height="32"
                     viewBox="0 0 24 24"
-                    fill="#5C6F68"
+                    fill="#F48FB1"
                     style={{ marginRight: 8 }}
                   >
                     <circle cx="12" cy="8" r="4" />
@@ -303,7 +304,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
                 display: "block",
                 height: 2,
                 width: "100%",
-                background: "#5C6F68",
+                background: "#F48FB1",
                 borderRadius: 1,
                 transition: "all 0.3s",
                 transform: mobileMenuOpen ? "rotate(45deg) translate(5px, 5px)" : "none",
@@ -314,7 +315,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
                 display: "block",
                 height: 2,
                 width: "100%",
-                background: "#5C6F68",
+                background: "#F48FB1",
                 borderRadius: 1,
                 transition: "all 0.3s",
                 opacity: mobileMenuOpen ? 0 : 1,
@@ -325,7 +326,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
                 display: "block",
                 height: 2,
                 width: "100%",
-                background: "#5C6F68",
+                background: "#F48FB1",
                 borderRadius: 1,
                 transition: "all 0.3s",
                 transform: mobileMenuOpen ? "rotate(-45deg) translate(7px, -6px)" : "none",
@@ -379,7 +380,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
                     }}
                     style={{
                       display: "block",
-                      color: "#5C6F68",
+                      color: "#F48FB1",
                       textDecoration: "none",
                       fontWeight: 500,
                       fontSize: "1rem",
@@ -401,7 +402,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
           }}
           style={{
             display: "block",
-            color: "#5C6F68",
+            color: "#F48FB1",
             textDecoration: "none",
             fontWeight: 500,
             fontSize: "1rem",
@@ -425,7 +426,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
                         closeMobileMenu();
                       }}
                       style={{
-                        color: "#5C6F68",
+                        color: "#F48FB1",
                         fontWeight: 500,
                         textDecoration: "none",
                         padding: "0.75rem 0",
@@ -439,7 +440,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
                         closeMobileMenu();
                       }}
                       style={{
-                        color: "#5C6F68",
+                        color: "#F48FB1",
                         fontWeight: 500,
                         textDecoration: "none",
                         padding: "0.75rem 0",

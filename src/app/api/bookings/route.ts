@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MongoClient, ObjectId } from "mongodb";
+import { sendOrderAcceptedEmail } from "../../lib/mailer";
 
 const uri = process.env.MONGODB_URI as string;
 const dbName = process.env.MONGODB_DB;
@@ -159,6 +160,37 @@ export async function PUT(req: NextRequest) {
       { _id: new ObjectId(id) },
       { $set: updateFields }
     );
+
+    // Send email to buyer when order is accepted
+    if (status === "accepted") {
+      try {
+        const booking = await collection.findOne({ _id: new ObjectId(id) });
+        if (booking && booking.buyerEmail) {
+          // Get seller name from salons collection
+          const salonsCollection = db.collection("salons");
+          const sellerUid = booking.sellerUid || booking.salonUid;
+          const seller = await salonsCollection.findOne(
+            { uid: sellerUid },
+            { projection: { name: 1 } }
+          );
+          const sellerName = seller?.name || "Verkäufer";
+          const items = booking.items || booking.services || [];
+
+          await sendOrderAcceptedEmail({
+            buyerEmail: booking.buyerEmail,
+            buyerName: booking.buyerName || booking.customerName || "Kunde",
+            sellerName,
+            items,
+            total: booking.total || 0,
+            shippingAddress: booking.shippingAddress || null,
+            orderId: id,
+          });
+        }
+      } catch (emailErr) {
+        console.error("Failed to send order accepted email:", emailErr);
+        // Don't fail the request if email fails
+      }
+    }
 
     await client.close();
 

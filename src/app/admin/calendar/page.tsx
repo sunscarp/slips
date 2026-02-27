@@ -858,7 +858,7 @@ const PlanUpgradeModal = ({ plan, plans }: { plan?: string; plans: any[] }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto">
       <div className="absolute inset-0 backdrop-blur-sm transition-all duration-300" />
-      <div className="relative text-center p-6 bg-white rounded-lg shadow-lg max-w-md mx-4 border-2 border-[#5C6F68]">
+      <div className="relative text-center p-6 bg-white rounded-lg shadow-lg max-w-md mx-4 border-2 border-[#F48FB1]">
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Bestell-Übersicht nur für Premium-Pläne</h2>
         <p className="text-gray-600 mb-4">
           Die Bestell-Übersicht ist nur für bestimmte Pläne verfügbar.<br />
@@ -869,7 +869,7 @@ const PlanUpgradeModal = ({ plan, plans }: { plan?: string; plans: any[] }) => {
         </p>
         <a
           href="/admin/plans"
-          className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-medium py-2 px-4 rounded-md inline-block mr-2"
+          className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-medium py-2 px-4 rounded-md inline-block mr-2"
         >
           Plan upgraden
         </a>

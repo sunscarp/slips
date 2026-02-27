@@ -5,10 +5,10 @@ import Footer from "@/components/footer";
 import ChatWidget from "../../../components/ChatWidget";
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
   lightGray: "#F8F9FA",
   border: "#E5E7EB",
   success: "#10B981",
@@ -233,7 +233,7 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   className="hover:bg-[#8bb87a] text-white font-semibold px-6 sm:px-8 py-2 sm:py-3 rounded-lg shadow transition min-w-[120px] sm:min-w-[140px]"
-                  style={{ backgroundColor: "#9DBE8D", color: "#000" }}
+                  style={{ backgroundColor: "#F48FB1", color: "#000" }}
                 >
                   Speichern
                 </button>

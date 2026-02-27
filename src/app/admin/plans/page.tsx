@@ -114,7 +114,7 @@ export default function PlansPage() {
 				{salon && (
 					<div
 						style={{
-							background: "#5C6F68",
+							background: "#F48FB1",
 							color: "#fff",
 							borderRadius: 10,
 							padding: "1.2rem 1.5rem",

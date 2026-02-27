@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mollytime",
+  title: "tastyslips",
   description: "Dein diskreter Marktplatz für exklusive Artikel",
 };
 

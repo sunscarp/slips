@@ -3,10 +3,10 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
 };
 
 export default function LoginPage() {
@@ -97,7 +97,7 @@ export default function LoginPage() {
             letterSpacing: -1,
           }}
         >
-          mollytime
+          tastyslips
         </div>
         <div
           style={{

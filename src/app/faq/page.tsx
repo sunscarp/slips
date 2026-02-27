@@ -4,17 +4,17 @@ import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
 };
 
 const faqs = [
   {
-    question: "Was ist mollytime?",
+    question: "Was ist tastyslips?",
     answer:
-      "mollytime ist ein diskreter Online-Marktplatz, auf dem Verkäuferinnen und Verkäufer exklusive Artikel wie Socken, Unterwäsche, Sportbekleidung und mehr anbieten können. Käufer können Produkte entdecken, Anfragen stellen und direkt mit Verkäufern in Kontakt treten.",
+      "tastyslips ist ein diskreter Online-Marktplatz, auf dem Verkäuferinnen und Verkäufer exklusive Artikel wie Socken, Unterwäsche, Sportbekleidung und mehr anbieten können. Käufer können Produkte entdecken, Anfragen stellen und direkt mit Verkäufern in Kontakt treten.",
   },
   {
     question: "Muss ich mich als Käufer registrieren?",
@@ -71,7 +71,7 @@ export default function FaqPage() {
             Häufig gestellte Fragen
           </h1>
           <p className="text-gray-600 text-center mb-10">
-            Alles, was du über mollytime wissen musst
+            Alles, was du über tastyslips wissen musst
           </p>
 
           <div className="space-y-4">
@@ -81,7 +81,7 @@ export default function FaqPage() {
                 className="bg-white rounded-lg shadow-sm border border-gray-100 group"
               >
                 <summary
-                  className="flex items-center justify-between cursor-pointer px-6 py-4 font-semibold text-gray-900 hover:text-[#5C6F68] transition-colors select-none"
+                  className="flex items-center justify-between cursor-pointer px-6 py-4 font-semibold text-gray-900 hover:text-[#F48FB1] transition-colors select-none"
                   style={{ listStyle: "none" }}
                 >
                   <span>{faq.question}</span>

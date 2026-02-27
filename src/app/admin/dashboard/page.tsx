@@ -3,15 +3,16 @@ import React, { useEffect, useState } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
 import ChatWidget from "../../../components/ChatWidget";
-import { FiCalendar, FiTrendingUp, FiStar, FiClock, FiUser, FiScissors } from "react-icons/fi";
+import { FiCalendar, FiTrendingUp, FiStar, FiClock, FiUser } from "react-icons/fi";
+import { GiUnderwear } from "react-icons/gi";
 import { FaEuroSign } from "react-icons/fa";
 
 // Constants
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
   background: "#FAFAFA",
   success: "#4CAF50",
   warning: "#FF9800",
@@ -336,7 +337,7 @@ export default function SalonDashboard() {
             id: 'products',
             title: 'Produkte insgesamt',
             value: productsCount,
-            icon: <FiScissors size={24} color="#222" />
+            icon: <GiUnderwear size={24} color="#222" />
           }
         ]);
 
@@ -449,7 +450,7 @@ export default function SalonDashboard() {
     stats[0], // Bestellungen heute
     stats[1] || { id: 'popular', title: 'Beliebtestes Produkt', value: 'Keine Produkte', icon: <FiTrendingUp size={24} color="#222" /> },
     stats[2] || { id: 'rating', title: 'Durchschnittliche Bewertung', value: '0.0', icon: <FiStar size={24} color="#222" /> },
-    stats[3] || { id: 'products', title: 'Produkte insgesamt', value: 0, icon: <FiScissors size={24} color="#222" /> }
+    stats[3] || { id: 'products', title: 'Produkte insgesamt', value: 0, icon: <GiUnderwear size={24} color="#222" /> }
   ];
   
   if (loading) {
@@ -491,6 +492,26 @@ export default function SalonDashboard() {
                   <span className="text-lg text-gray-600 block mt-1">(System-Ansicht)</span>
                 )}
               </h1>
+              {/* Verification Status Badge */}
+              <div className="flex items-center justify-center gap-2 mb-2">
+                {salon?.verified ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" fill="#2196F3" />
+                      <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Verifizierter Verkäufer
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-500">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" fill="#9CA3AF" />
+                      <path d="M15 9l-6 6M9 9l6 6" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                    Nicht verifiziert
+                  </span>
+                )}
+              </div>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mb-1">
                 <span className="text-black text-lg font-mono">{currentTime}</span>
               </div>
@@ -603,7 +624,7 @@ const StatCardView = ({ stat }: { stat: StatCard | any }) => {
           </div>
         </div>
         <div className="flex-shrink-0 flex items-center justify-center ml-4">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-[#e4ded5] to-[#9dbe8d]/30 shadow-inner border border-gray-200">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-[#e4ded5] to-[#F48FB1]/30 shadow-inner border border-gray-200">
             <span className="text-primary-600 flex items-center justify-center" style={{ lineHeight: 0 }}>
               {typeof stat.icon === "function"
                 ? React.createElement(stat.icon, { size: 28, color: "#222" })
@@ -625,7 +646,7 @@ const StatCardView = ({ stat }: { stat: StatCard | any }) => {
           <div className="mt-1">{stat.value}</div>
         </div>
         <div className="flex-shrink-0 flex items-center justify-center ml-4">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-[#e4ded5] to-[#9dbe8d]/30 shadow-inner border border-gray-200">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-[#e4ded5] to-[#F48FB1]/30 shadow-inner border border-gray-200">
             <span className="text-primary-600 flex items-center justify-center" style={{ lineHeight: 0 }}>
               {typeof stat.icon === "function"
                 ? React.createElement(stat.icon, { size: 28, color: "#222" })
@@ -646,7 +667,7 @@ const StatCardView = ({ stat }: { stat: StatCard | any }) => {
         <p className="mt-1 text-2xl sm:text-3xl font-semibold text-gray-900">{stat.value}</p>
       </div>
       <div className="flex-shrink-0 flex items-center justify-center ml-4">
-        <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-[#e4ded5] to-[#9dbe8d]/30 shadow-inner border border-gray-200">
+        <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-[#e4ded5] to-[#F48FB1]/30 shadow-inner border border-gray-200">
           <span className="text-primary-600 flex items-center justify-center" style={{ lineHeight: 0 }}>
             {typeof stat.icon === "function"
               ? React.createElement(stat.icon, { size: 28, color: "#222" })

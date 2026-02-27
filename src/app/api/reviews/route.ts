@@ -14,7 +14,13 @@ export async function POST(req: NextRequest) {
     const finalRequestId = requestId || bookingId;
 
     if (!finalSellerUid || !buyerEmail || !rating || rating < 1 || rating > 5 || !finalItemName || !finalRequestId) {
-      return NextResponse.json({ error: "Missing required fields (seller, buyerEmail, rating, item name, and request ID required)" }, { status: 400 });
+      const missing = [];
+      if (!finalSellerUid) missing.push("seller");
+      if (!buyerEmail) missing.push("buyerEmail");
+      if (!rating || rating < 1 || rating > 5) missing.push("rating (1-5)");
+      if (!finalItemName) missing.push("item name");
+      if (!finalRequestId) missing.push("request ID");
+      return NextResponse.json({ error: `Missing required fields: ${missing.join(", ")}` }, { status: 400 });
     }
 
     const client = await MongoClient.connect(uri);
@@ -115,15 +121,11 @@ export async function GET(req: NextRequest) {
 
     const reviews = await reviewsCollection.find(query).sort({ createdAt: -1 }).toArray();
     
-    // Calculate average rating if fetching for a salon
+    // Calculate average rating from the fetched reviews
     let averageRating = 0;
-    if (salonUid && reviews.length > 0) {
-      const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    if (reviews.length > 0) {
+      const totalRating = reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0);
       averageRating = Math.round((totalRating / reviews.length) * 10) / 10;
-    }
-    // Ensure averageRating is always a number with one decimal
-    if (!salonUid || reviews.length === 0) {
-      averageRating = 0;
     }
 
     await client.close();

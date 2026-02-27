@@ -4,7 +4,7 @@ export default function ImpressumPage() {
   return (
     <main className="min-h-screen bg-gray-50 font-sans px-4 py-8">
       <div className="max-w-xl mx-auto bg-white rounded-lg shadow-sm p-6">
-        <h1 className="text-2xl font-bold text-[#5C6F68] mb-4">Impressum</h1>
+        <h1 className="text-2xl font-bold text-[#F48FB1] mb-4">Impressum</h1>
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-2 text-gray-700">Angaben gemäß § 5 TMG</h2>
           <p className="text-black text-sm">
@@ -23,7 +23,7 @@ export default function ImpressumPage() {
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-2 text-gray-700">Kontakt</h2>
           <p className="text-black text-sm">
-            E-Mail: <a href="mailto:hello@bookme.com" className="text-[#5C6F68] underline">hello@bookme.com</a>
+            E-Mail: <a href="mailto:hello@bookme.com" className="text-[#F48FB1] underline">hello@bookme.com</a>
           </p>
         </section>
         <section className="mb-6">

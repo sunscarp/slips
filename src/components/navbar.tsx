@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
 };
 
 type NavbarProps = {
@@ -17,6 +17,8 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [internalUser, setInternalUser] = useState<{ email?: string | null; username?: string | null } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -25,6 +27,37 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Internal auth check to avoid flash of unauthenticated state
+  useEffect(() => {
+    if (user) {
+      setInternalUser(user);
+      setAuthChecked(true);
+      return;
+    }
+    // If no user prop yet, do our own quick check
+    fetch("/api/auth/me")
+      .then(r => r.ok ? r.json() : null)
+      .then(u => {
+        if (u && u.role !== "salon" && u.role !== "admin") {
+          setInternalUser({ email: u.email, username: u.username });
+        } else {
+          setInternalUser(null);
+        }
+        setAuthChecked(true);
+      })
+      .catch(() => { setInternalUser(null); setAuthChecked(true); });
+  }, [user]);
+
+  // Sync when parent eventually passes user
+  useEffect(() => {
+    if (user !== undefined) {
+      setInternalUser(user);
+      setAuthChecked(true);
+    }
+  }, [user]);
+
+  const resolvedUser = internalUser || user;
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -109,7 +142,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
           letterSpacing: -1,
         }}
       >
-        mollytime
+        tastyslips
       </a>
       
       {/* Desktop Navigation */}
@@ -156,13 +189,13 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
           Meine Anfragen
         </a>
         {/* Only show Login/Register if NOT logged in */}
-        {!user && (
+        {authChecked && !resolvedUser && (
           <>
             <a
               href="/login"
               style={{
                 marginRight: 18,
-                color: "#5C6F68",
+                color: "#F48FB1",
                 fontWeight: 500,
                 textDecoration: "none",
               }}
@@ -172,7 +205,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
             <a
               href="/register"
               style={{
-                color: "#5C6F68",
+                color: "#F48FB1",
                 fontWeight: 500,
                 textDecoration: "none",
               }}
@@ -182,7 +215,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
           </>
         )}
         {/* Show Account Circle with dropdown if logged in */}
-        {user && (
+        {authChecked && resolvedUser && (
           <div
             ref={dropdownRef}
             style={{ position: "relative", display: "inline-block" }}
@@ -204,14 +237,14 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                 width="32"
                 height="32"
                 viewBox="0 0 24 24"
-                fill="#5C6F68"
+                fill="#F48FB1"
                 style={{ marginRight: 4 }}
               >
                 <circle cx="12" cy="8" r="4" />
                 <path d="M12 14c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4z" />
               </svg>
               <span style={{ color: COLORS.primary, fontWeight: 500, fontSize: '0.9rem', fontFamily: 'Inter, sans-serif' }}>
-                {user.username || user.email || 'Konto'}
+                {resolvedUser.username || resolvedUser.email || 'Konto'}
               </span>
             </button>
             {dropdownOpen && (
@@ -329,20 +362,20 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                   fontFamily: "Inter, sans-serif",
                   fontSize: "1rem",
                   padding: "12px 16px",
-                  borderBottom: user ? "1px solid #f0f0f0" : "none",
+                  borderBottom: resolvedUser ? "1px solid #f0f0f0" : "none",
                 }}
               >
                 Meine Anfragen
               </a>
               
-              {!user && (
+              {authChecked && !resolvedUser && (
                 <>
                   <a
                     href="/login"
                     onClick={handleMobileLinkClick}
                     style={{
                       display: "block",
-                      color: "#5C6F68",
+                      color: "#F48FB1",
                       fontWeight: 500,
                       textDecoration: "none",
                       fontFamily: "Inter, sans-serif",
@@ -358,7 +391,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                     onClick={handleMobileLinkClick}
                     style={{
                       display: "block",
-                      color: "#5C6F68",
+                      color: "#F48FB1",
                       fontWeight: 500,
                       textDecoration: "none",
                       fontFamily: "Inter, sans-serif",
@@ -371,7 +404,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                 </>
               )}
               
-              {user && (
+              {authChecked && resolvedUser && (
                 <>
                   <div style={{
                     padding: '12px 16px',
@@ -381,7 +414,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                     borderBottom: '1px solid #f0f0f0',
                     fontFamily: 'Inter, sans-serif',
                   }}>
-                    {user.username || user.email || 'Konto'}
+                    {resolvedUser.username || resolvedUser.email || 'Konto'}
                   </div>
                   <button
                     onClick={handleLogout}

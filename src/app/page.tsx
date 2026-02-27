@@ -3,35 +3,17 @@ import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Footer from "../components/footer";
 import Navbar from "../components/navbar";
-import { FiMapPin, FiPhone, FiScissors, FiStar } from "react-icons/fi";
+import ChatWidget from "../components/ChatWidget";
+import { FiMapPin, FiPhone, FiStar } from "react-icons/fi";
+import { GiUnderwear } from "react-icons/gi";
 
 // --- Styles ---
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
 };
-
-const featuredSalons = [
-  {
-    location: "Innenstadt",
-    slug: "urban-bliss-spa",
-    image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80",
-  },
-  {
-    name: "Serenity Salon",
-    location: "Vorstadt",
-    slug: "serenity-salon",
-    image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80",
-  },
-  {
-    name: "Glow & Go",
-    location: "Stadtmitte",
-    slug: "glow-and-go",
-    image: "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=400&q=80",
-  },
-];
 
 // --- Components ---
 function HeroSection({ onSearch }: { onSearch: (query: { name: string; treatment: string; date: string }) => void }) {
@@ -189,7 +171,7 @@ function HeroSection({ onSearch }: { onSearch: (query: { name: string; treatment
               lineHeight: 1.08,
             }}
           >
-            mollytime
+            tastyslips
           </div>
           <div
             style={{
@@ -348,8 +330,19 @@ function HowItWorks() {
 export default function HomePage() {
   const router = useRouter();
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [user, setUser] = useState<{ email: string | null; username?: string | null } | null>(null);
+  const [user, setUser] = useState<{ uid?: string; email: string | null; username?: string | null } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [salons, setSalons] = useState<any[]>([]);
+  const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [salonsLoading, setSalonsLoading] = useState(true);
+
+  function slugify(text: string) {
+    return text
+      .toLowerCase()
+      .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+  }
 
   useEffect(() => {
     const checkMobile = () => {
@@ -363,8 +356,51 @@ export default function HomePage() {
   useEffect(() => {
     fetch("/api/auth/me")
       .then(r => r.ok ? r.json() : null)
-      .then(u => setUser(u ? { email: u.email, username: u.username } : null))
+      .then(u => {
+        if (!u) { setUser(null); return; }
+        if (u.role === "salon") {
+          router.push("/admin/dashboard");
+          return;
+        }
+        if (u.role === "admin") {
+          router.push("/system/admin");
+          return;
+        }
+        setUser({ uid: u.uid, email: u.email, username: u.username });
+      })
       .catch(() => setUser(null));
+  }, [router]);
+
+  // Fetch salons for the sellers list
+  useEffect(() => {
+    setSalonsLoading(true);
+    fetch("/api/salons")
+      .then(r => r.ok ? r.json() : { salons: [] })
+      .then(data => {
+        const s = (data.salons || []).filter((salon: any) => typeof salon.name === "string" && salon.name.length > 0);
+        setSalons(s);
+        // Fetch ratings
+        fetch("/api/reviews")
+          .then(r => r.ok ? r.json() : { reviews: [] })
+          .then(rData => {
+            const reviews = rData.reviews || [];
+            const ratingsMap: Record<string, { sum: number; count: number }> = {};
+            reviews.forEach((rev: any) => {
+              const uid = rev.salonUid || rev.sellerUid;
+              if (uid) {
+                if (!ratingsMap[uid]) ratingsMap[uid] = { sum: 0, count: 0 };
+                ratingsMap[uid].sum += rev.rating || 0;
+                ratingsMap[uid].count += 1;
+              }
+            });
+            const avg: Record<string, number> = {};
+            Object.entries(ratingsMap).forEach(([uid, v]) => { avg[uid] = v.sum / v.count; });
+            setRatings(avg);
+          })
+          .catch(() => {});
+      })
+      .catch(() => {})
+      .finally(() => setSalonsLoading(false));
   }, []);
 
   const handleLogout = async () => {
@@ -424,7 +460,139 @@ export default function HomePage() {
         </div>
       )}
       <HowItWorks />
+
+      {/* Sellers List Section */}
+      <section
+        style={{
+          padding: isMobile ? "3rem 1rem" : "5rem 1.5rem",
+          maxWidth: "1280px",
+          margin: "0 auto",
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: "'Poppins', sans-serif",
+            textAlign: "center",
+            color: COLORS.primary,
+            fontWeight: 600,
+            marginBottom: isMobile ? 32 : 48,
+            fontSize: isMobile ? "1.5rem" : "1.75rem",
+            letterSpacing: 0.3,
+          }}
+        >
+          Unsere Verkäufer
+        </h2>
+        {salonsLoading ? (
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: isMobile ? 16 : 24 }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ background: "#fff", borderRadius: 12, height: 280, border: "1px solid #E4DED5" }} className="animate-pulse" />
+            ))}
+          </div>
+        ) : salons.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#999", fontFamily: "'Roboto', sans-serif" }}>
+            Noch keine Verkäufer registriert.
+          </p>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(300px, 1fr))", gap: isMobile ? 16 : 24 }}>
+              {salons.slice(0, 6).map((salon) => {
+                const slug = slugify(salon.name);
+                return (
+                  <div
+                    key={salon._id}
+                    style={{
+                      background: "#fff",
+                      borderRadius: 12,
+                      border: "1px solid #E4DED5",
+                      overflow: "hidden",
+                      transition: "transform 0.2s, box-shadow 0.2s",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => router.push(`/salon/${slug}`)}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(0,0,0,0.1)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                  >
+                    {salon.imageUrls && salon.imageUrls.length > 0 && (
+                      <img
+                        src={salon.imageUrls[0]}
+                        alt={salon.name}
+                        style={{ width: "100%", height: 180, objectFit: "cover", background: COLORS.accent }}
+                        loading="lazy"
+                      />
+                    )}
+                    <div style={{ padding: isMobile ? "1rem" : "1.25rem" }}>
+                      <h3 style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 600, fontSize: "1.1rem", color: COLORS.text, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                        <GiUnderwear style={{ color: COLORS.primary, flexShrink: 0 }} />
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{salon.name}</span>
+                      </h3>
+                      <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+                        {[...Array(5)].map((_, i) => (
+                          <FiStar
+                            key={i}
+                            style={{
+                              width: 16, height: 16,
+                              color: i < Math.round(ratings[salon.uid] || 0) ? COLORS.primary : "#d1d5db",
+                              fill: i < Math.round(ratings[salon.uid] || 0) ? COLORS.primary : "none",
+                            }}
+                          />
+                        ))}
+                        <span style={{ marginLeft: 8, color: COLORS.text, fontWeight: 500, fontSize: "0.9rem" }}>
+                          {typeof ratings[salon.uid] === "number" ? ratings[salon.uid].toFixed(1) : "0.0"}
+                        </span>
+                      </div>
+                      {salon.description && (
+                        <p style={{ fontFamily: "'Roboto', sans-serif", color: "#6b7280", fontSize: "0.85rem", lineHeight: 1.5, marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                          {salon.description}
+                        </p>
+                      )}
+                      {salon.location && (
+                        <div style={{ display: "flex", alignItems: "center", color: "#6b7280", fontSize: "0.8rem", gap: 4 }}>
+                          <FiMapPin style={{ color: COLORS.primary, flexShrink: 0 }} />
+                          <span>{salon.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {salons.length > 6 && (
+              <div style={{ textAlign: "center", marginTop: isMobile ? 24 : 36 }}>
+                <button
+                  onClick={() => router.push("/salons")}
+                  style={{
+                    background: COLORS.primary,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "0.75rem 2rem",
+                    fontWeight: 600,
+                    fontFamily: "'Poppins', sans-serif",
+                    cursor: "pointer",
+                    fontSize: "1rem",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#EC407A")}
+                  onMouseLeave={e => (e.currentTarget.style.background = COLORS.primary)}
+                >
+                  Alle Verkäufer anzeigen
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
       <Footer />
+
+      {/* Chat Widget for logged-in buyers */}
+      {user?.uid && (
+        <ChatWidget
+          userUid={user.uid}
+          userName={user.username || user.email || "Käufer"}
+          userRole="buyer"
+        />
+      )}
     </main>
   );
 }

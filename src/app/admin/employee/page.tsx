@@ -87,7 +87,7 @@ export default function EmployeePage() {
           </p>
           <a
             href="/admin/salonprofile"
-            className="inline-block bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200"
+            className="inline-block bg-[#F48FB1] hover:bg-[#EC407A] text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200"
           >
             Zum Profil
           </a>

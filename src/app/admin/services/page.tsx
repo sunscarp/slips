@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { FiEdit2, FiTrash2, FiPlus, FiScissors } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiPlus } from "react-icons/fi";
+import { GiUnderwear } from "react-icons/gi";
 import Navbar from "@/components/adminnavbar";
 import Footer from "@/components/footer";
 import ChatWidget from "@/components/ChatWidget";
@@ -23,7 +24,7 @@ function ServiceStatCard({ count }: { count: number }) {
         <p className="mt-1 text-2xl font-semibold text-black">{count}</p>
       </div>
       <div className="p-3 rounded-full bg-primary-50 text-primary-600">
-        <FiScissors size={24} color="black" />
+        <GiUnderwear size={24} color="black" />
       </div>
     </div>
   );
@@ -38,6 +39,14 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
           serviceType: initial.serviceType || "",
           price: initial.price || 0,
           imageUrl: initial.imageUrl || "",
+          timeWorn: initial.timeWorn ?? "",
+          additionalServices: initial.additionalServices || [],
+          wearDurationEnabled: initial.wearDurationEnabled ?? false,
+          minWearDays: initial.minWearDays || 1,
+          maxWearDays: initial.maxWearDays || 7,
+          basePrice: initial.basePrice || initial.pricePerDay || 0,
+          extraPricePerDay: initial.extraPricePerDay || 0,
+          requiresAddress: initial.requiresAddress ?? true,
         }
       : {
           name: "",
@@ -45,8 +54,18 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
           serviceType: "",
           price: 0,
           imageUrl: "",
+          timeWorn: "",
+          additionalServices: [] as { name: string; price: number }[],
+          wearDurationEnabled: false,
+          minWearDays: 1,
+          maxWearDays: 7,
+          basePrice: 0,
+          extraPricePerDay: 0,
+          requiresAddress: true,
         }
   );
+  const [newAdditionalName, setNewAdditionalName] = useState("");
+  const [newAdditionalPrice, setNewAdditionalPrice] = useState("");
 
   function handleChange(e: any) {
     const { name, value } = e.target;
@@ -76,9 +95,32 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
       alert("Bitte füge ein Bild für das Produkt hinzu (erforderlich).");
       return;
     }
+    const timeWornVal = Number(form.timeWorn);
+    if (!form.wearDurationEnabled && (!form.timeWorn || isNaN(timeWornVal) || timeWornVal <= 0)) {
+      alert("Bitte gib die Tragedauer in Tagen an (nur Zahlen, Pflichtfeld).");
+      return;
+    }
+    if (form.wearDurationEnabled) {
+      const minD = Number(form.minWearDays);
+      const maxD = Number(form.maxWearDays);
+      const bp = Number(form.basePrice);
+      const epd = Number(form.extraPricePerDay);
+      if (isNaN(minD) || minD < 1) { alert("Mindestanzahl Tage muss mindestens 1 sein."); return; }
+      if (isNaN(maxD) || maxD <= minD) { alert("Maximalanzahl Tage muss größer als Mindestanzahl sein."); return; }
+      if (isNaN(bp) || bp <= 0) { alert("Bitte gib einen gültigen Grundpreis an."); return; }
+      if (isNaN(epd) || epd < 0) { alert("Aufpreis pro Zusatztag darf nicht negativ sein."); return; }
+    }
     await onSave({
       ...form,
-      price,
+      price: form.wearDurationEnabled ? Number(form.basePrice) : price,
+      timeWorn: form.wearDurationEnabled ? 0 : timeWornVal,
+      additionalServices: form.additionalServices || [],
+      wearDurationEnabled: form.wearDurationEnabled,
+      minWearDays: form.wearDurationEnabled ? Number(form.minWearDays) : undefined,
+      maxWearDays: form.wearDurationEnabled ? Number(form.maxWearDays) : undefined,
+      basePrice: form.wearDurationEnabled ? Number(form.basePrice) : undefined,
+      extraPricePerDay: form.wearDurationEnabled ? Number(form.extraPricePerDay) : undefined,
+      requiresAddress: form.requiresAddress,
     });
   }
 
@@ -139,7 +181,91 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
         />
       </div>
       
+      {/* Wear Duration Toggle */}
+      <div className="border border-[#F48FB1]/30 rounded-lg p-4 bg-pink-50/40">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-semibold text-black">Tragedauer wählbar (Käufer nutzt Slider)</label>
+          <button
+            type="button"
+            onClick={() => setForm((f: any) => ({ ...f, wearDurationEnabled: !f.wearDurationEnabled }))}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              form.wearDurationEnabled ? 'bg-[#F48FB1]' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                form.wearDurationEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+        {form.wearDurationEnabled ? (
+          <div className="space-y-3 mt-3">
+            <p className="text-xs text-gray-500">Käufer wählen die Anzahl der Tage per Slider. Grundpreis für den ersten Tag, danach Aufpreis für jeden weiteren Tag.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-black mb-1">Min. Tage*</label>
+                <input
+                  name="minWearDays"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={form.minWearDays}
+                  onChange={handleChange}
+                  className="input input-bordered w-full font-inter text-black border-gray-200 border-2 rounded-lg bg-white py-2 text-base px-3"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-black mb-1">Max. Tage*</label>
+                <input
+                  name="maxWearDays"
+                  type="number"
+                  min="2"
+                  step="1"
+                  value={form.maxWearDays}
+                  onChange={handleChange}
+                  className="input input-bordered w-full font-inter text-black border-gray-200 border-2 rounded-lg bg-white py-2 text-base px-3"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-black mb-1">Grundpreis (€)*</label>
+                <p className="text-[10px] text-gray-400 mb-1">Preis für {form.minWearDays} {Number(form.minWearDays) === 1 ? 'Tag' : 'Tage'}</p>
+                <input
+                  name="basePrice"
+                  type="number"
+                  min="0"
+                  step="0.50"
+                  value={form.basePrice}
+                  onChange={handleChange}
+                  className="input input-bordered w-full font-inter text-black border-gray-200 border-2 rounded-lg bg-white py-2 text-base px-3"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-black mb-1">Aufpreis / Zusatztag (€)*</label>
+                <p className="text-[10px] text-gray-400 mb-1">Jeder Tag über Min hinaus</p>
+                <input
+                  name="extraPricePerDay"
+                  type="number"
+                  min="0"
+                  step="0.50"
+                  value={form.extraPricePerDay}
+                  onChange={handleChange}
+                  className="input input-bordered w-full font-inter text-black border-gray-200 border-2 rounded-lg bg-white py-2 text-base px-3"
+                />
+              </div>
+            </div>
+            {form.basePrice > 0 && (
+              <div className="text-xs text-[#F48FB1] font-medium space-y-0.5">
+                <p>Minimalpreis ({form.minWearDays} {Number(form.minWearDays) === 1 ? 'Tag' : 'Tage'}): €{Number(form.basePrice).toFixed(2)}</p>
+                <p>Maximalpreis ({form.maxWearDays} Tage): €{(Number(form.basePrice) + (Number(form.maxWearDays) - Number(form.minWearDays)) * Number(form.extraPricePerDay)).toFixed(2)}</p>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+
       {/* Price and Image for product */}
+      {!form.wearDurationEnabled && (
       <div>
         <label className="block text-sm font-medium text-black mb-2">Preis (€)*</label>
         <input
@@ -153,6 +279,7 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
           className="input input-bordered w-full mt-1 font-inter text-black border-gray-200 border-2 rounded-lg bg-gray-50 shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all duration-200 py-2 text-base px-4"
         />
       </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-black mb-2">Produktbild*</label>
@@ -171,10 +298,112 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
         </div>
       </div>
 
+      {/* Requires Address Toggle */}
+      <div className="flex items-center justify-between border border-gray-200 rounded-lg p-4 bg-gray-50">
+        <div>
+          <label className="text-sm font-semibold text-black">Lieferadresse erforderlich?</label>
+          <p className="text-xs text-gray-500 mt-0.5">Käufer müssen beim Kauf eine Lieferadresse angeben</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setForm((f: any) => ({ ...f, requiresAddress: !f.requiresAddress }))}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+            form.requiresAddress ? 'bg-[#F48FB1]' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+              form.requiresAddress ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* Time Worn Field (only when duration slider is off) */}
+      {!form.wearDurationEnabled && (
+      <div>
+        <label className="block text-sm font-medium text-black mb-2">Tragedauer (in Tagen)*</label>
+        <input
+          name="timeWorn"
+          type="number"
+          min="1"
+          step="1"
+          value={form.timeWorn}
+          onChange={handleChange}
+          required
+          placeholder="z.B. 3"
+          className="input input-bordered w-full mt-1 font-inter text-black border-gray-200 border-2 rounded-lg bg-gray-50 shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all duration-200 py-2 text-base px-4"
+        />
+      </div>
+      )}
+
+      {/* Additional Services */}
+      <div>
+        <label className="block text-sm font-medium text-black mb-2">Zusätzliche Leistungen</label>
+        {(form.additionalServices || []).length > 0 && (
+          <div className="space-y-2 mb-3">
+            {form.additionalServices.map((as: { name: string; price: number }, idx: number) => (
+              <div key={idx} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                <span className="flex-1 text-black font-medium text-sm">{as.name}</span>
+                <span className="text-green-700 font-mono text-sm">€{as.price}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm((f: any) => ({
+                      ...f,
+                      additionalServices: f.additionalServices.filter((_: any, i: number) => i !== idx),
+                    }));
+                  }}
+                  className="text-red-500 hover:text-red-700 font-bold text-lg px-1"
+                  title="Entfernen"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            value={newAdditionalName}
+            onChange={(e) => setNewAdditionalName(e.target.value)}
+            placeholder="Name der Leistung"
+            className="input input-bordered flex-1 font-inter text-black border-gray-200 border-2 rounded-lg bg-gray-50 shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all duration-200 py-2 text-base px-4"
+          />
+          <input
+            type="number"
+            min="0"
+            step="0.50"
+            value={newAdditionalPrice}
+            onChange={(e) => setNewAdditionalPrice(e.target.value)}
+            placeholder="Preis (€)"
+            className="input input-bordered w-full sm:w-32 font-inter text-black border-gray-200 border-2 rounded-lg bg-gray-50 shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all duration-200 py-2 text-base px-4"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (!newAdditionalName.trim()) return;
+              const priceVal = Number(newAdditionalPrice);
+              if (isNaN(priceVal) || priceVal < 0) return;
+              setForm((f: any) => ({
+                ...f,
+                additionalServices: [...(f.additionalServices || []), { name: newAdditionalName.trim(), price: priceVal }],
+              }));
+              setNewAdditionalName("");
+              setNewAdditionalPrice("");
+            }}
+            className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-semibold px-4 py-2 rounded-lg transition-all duration-200 text-sm whitespace-nowrap"
+          >
+            + Hinzufügen
+          </button>
+        </div>
+      </div>
+
       <div className="flex gap-2 mt-2">
         <button
           type="submit"
-          className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold px-6 py-2 rounded-lg transition-all duration-200"
+          className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-semibold px-6 py-2 rounded-lg transition-all duration-200"
           disabled={loading}
         >
           {loading ? "Speichern..." : "Speichern"}
@@ -537,7 +766,7 @@ export default function ServicesPage() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2 sm:gap-0">
                 <div className="flex w-full items-center justify-between">
                   <h2 className="text-xl font-semibold text-black flex items-center font-inter">
-                    <FiScissors className="mr-2" /> Ihre Produkte
+                    <GiUnderwear className="mr-2" /> Ihre Produkte
                   </h2>
                   {/* On mobile, button on right side of heading */}
                   <div className="flex-shrink-0 ml-2 sm:ml-0">

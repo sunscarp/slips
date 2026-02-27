@@ -1,15 +1,18 @@
 "use client";
 import React, { useEffect, useState, useRef, Fragment } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FiMapPin, FiPhone, FiScissors, FiClock, FiStar, FiArrowLeft, FiUser } from "react-icons/fi";
+import { FiMapPin, FiPhone, FiClock, FiStar, FiArrowLeft, FiUser } from "react-icons/fi";
+import { GiUnderwear } from "react-icons/gi";
 import Footer from "@/components/footer";
+import ChatWidget from "@/components/ChatWidget";
+import Navbar from "@/components/navbar";
 
 // Color palette (same as dashboard)
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
   background: "#FAFAFA",
   card: "#fff",
   border: "#E4DED5"
@@ -29,6 +32,7 @@ type Salon = {
   size?: string;
   hobbies?: string;
   serviceHours?: string;
+  verified?: boolean;
 };
 
 type Service = {
@@ -43,6 +47,17 @@ type Service = {
   selectedOption?: { duration: number; price: number };
   price?: number;
   duration?: number;
+  timeWorn?: number;
+  additionalServices?: { name: string; price: number }[];
+  selectedAdditionalServices?: string[];
+  wearDurationEnabled?: boolean;
+  minWearDays?: number;
+  maxWearDays?: number;
+  pricePerDay?: number;       // legacy, kept for compat
+  basePrice?: number;
+  extraPricePerDay?: number;
+  selectedWearDays?: number;
+  requiresAddress?: boolean;
 };
 
 type Review = {
@@ -79,6 +94,18 @@ export default function SalonPage() {
   const [serviceReviews, setServiceReviews] = useState<Review[]>([]);
   const [serviceAverageRating, setServiceAverageRating] = useState<number>(0);
   const [selectedDurations, setSelectedDurations] = useState<{ [serviceId: string]: { duration: number; price: number } }>({});
+  const [selectedAdditionals, setSelectedAdditionals] = useState<{ [serviceId: string]: string[] }>({});
+  const [selectedWearDays, setSelectedWearDays] = useState<{ [serviceId: string]: number }>({});
+  const [currentUser, setCurrentUser] = useState<{ uid: string; name?: string; username?: string; email?: string } | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+
+  // Fetch current user for chat
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(u => setCurrentUser(u || null))
+      .catch(() => setCurrentUser(null));
+  }, []);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -154,19 +181,44 @@ export default function SalonPage() {
     reviewsRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Add/remove service from cart with selected duration/price
+  // Add/remove service from cart with selected duration/price and additional services
   const toggleServiceInCart = (service: Service, selectedOption?: { duration: number; price: number }) => {
     setCartServices(prev => {
       const exists = prev.find(s => s._id === service._id);
       if (exists) {
         return prev.filter(s => s._id !== service._id);
       } else {
+        const addons = selectedAdditionals[service._id] || [];
+        // Wear-duration slider pricing
+        if (service.wearDurationEnabled) {
+          const days = selectedWearDays[service._id] ?? service.minWearDays ?? 1;
+          const bp = service.basePrice ?? service.pricePerDay ?? 0;
+          const epd = service.extraPricePerDay ?? 0;
+          const min = service.minWearDays ?? 1;
+          const basePrice = bp + Math.max(0, days - min) * epd;
+          const addonsTotal = addons.reduce((sum, name) => {
+            const addon = service.additionalServices?.find(a => a.name === name);
+            return sum + (addon?.price || 0);
+          }, 0);
+          return [...prev, {
+            ...service,
+            price: basePrice + addonsTotal,
+            selectedWearDays: days,
+            selectedAdditionalServices: addons,
+          }];
+        }
         const option = selectedOption || selectedDurations[service._id] || (service.durationPrices && service.durationPrices[0]) || (service.price ? { duration: 0, price: service.price } : undefined);
+        const basePrice = option?.price || service.price || 0;
+        const addonsTotal = addons.reduce((sum, name) => {
+          const addon = service.additionalServices?.find(a => a.name === name);
+          return sum + (addon?.price || 0);
+        }, 0);
         return [...prev, { 
           ...service, 
-          price: option?.price || service.price || 0,
+          price: basePrice + addonsTotal,
           duration: option?.duration || 0,
-          selectedOption: option 
+          selectedOption: option,
+          selectedAdditionalServices: addons,
         }];
       }
     });
@@ -193,9 +245,19 @@ export default function SalonPage() {
       try {
         const reviewsRes = await fetch(`/api/reviews?salonUid=${salon.uid}`);
         const reviewsData = await reviewsRes.json();
-        setReviews(reviewsData.reviews || []);
-        setAverageRating(reviewsData.averageRating || 0);
-        setTotalReviews(reviewsData.totalReviews || 0);
+        const fetchedReviews = reviewsData.reviews || [];
+        setReviews(fetchedReviews);
+        
+        // Use API-provided values, or calculate locally as fallback
+        if (fetchedReviews.length > 0) {
+          const calcTotal = fetchedReviews.reduce((sum: number, r: Review) => sum + Number(r.rating || 0), 0);
+          const calcAvg = Math.round((calcTotal / fetchedReviews.length) * 10) / 10;
+          setAverageRating(reviewsData.averageRating || calcAvg);
+          setTotalReviews(reviewsData.totalReviews || fetchedReviews.length);
+        } else {
+          setAverageRating(0);
+          setTotalReviews(0);
+        }
       } catch (error) {
         console.error('Error fetching reviews:', error);
       }
@@ -222,19 +284,25 @@ export default function SalonPage() {
   };
 
   if (loading) return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5C6F68] mx-auto mb-4"></div>
-        <p className="text-[#5C6F68] text-lg">Laden...</p>
+    <main className="min-h-screen bg-gray-50 font-sans">
+      <Navbar user={currentUser ? { email: currentUser.email, username: currentUser.username } : undefined} />
+      <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 64px)' }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#F48FB1] mx-auto mb-4"></div>
+          <p className="text-[#F48FB1] text-lg">Laden...</p>
+        </div>
       </div>
     </main>
   );
   
   if (!salon) return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
-      <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Verkäufer nicht gefunden</h2>
-        <p className="text-gray-600 mb-4">Bitte überprüfe den Link oder versuche es erneut.</p>
+    <main className="min-h-screen bg-gray-50 font-sans">
+      <Navbar user={currentUser ? { email: currentUser.email, username: currentUser.username } : undefined} />
+      <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 64px)' }}>
+        <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Verkäufer nicht gefunden</h2>
+          <p className="text-gray-600 mb-4">Bitte überprüfe den Link oder versuche es erneut.</p>
+        </div>
       </div>
     </main>
   );
@@ -242,30 +310,25 @@ export default function SalonPage() {
   return (
     <main className="min-h-screen font-sans bg-[#FAFAFA]">
       {/* Navigation Bar */}
-      <nav className="bg-white shadow-sm border-b border-[#E4DED5] sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <button 
-              onClick={() => router.back()}
-              className="flex items-center text-[#5C6F68] hover:text-[#4a5a54] transition-colors text-base sm:text-lg"
-            >
-              <FiArrowLeft className="mr-2" />
-              Zurück zum Marktplatz
-            </button>
-            {/* Book Your Style entfernt */}
-          </div>
-        </div>
-      </nav>
+      <Navbar user={currentUser ? { email: currentUser.email, username: currentUser.username } : undefined} />
 
       {/* Main Content Container */}
       <div className="px-2 sm:px-4 lg:px-8 pt-6 pb-2 w-full max-w-6xl mx-auto">
         {/* Salon Name & Ratings */}
         <section className="w-full text-left mb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
-            <h1 className="text-3xl sm:text-5xl font-bold text-[#1F1F1F] mb-2 sm:mb-3 break-words">{salon.name}</h1>
+            <h1 className="text-3xl sm:text-5xl font-bold text-[#1F1F1F] mb-2 sm:mb-3 break-words flex items-center gap-2">
+              {salon.name}
+              {salon.verified && (
+                <svg className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" fill="#2196F3" />
+                  <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </h1>
             <div className="flex items-center gap-1 mb-2">
               {[...Array(5)].map((_, i) => (
-                <FiStar key={i} className={`w-5 h-5 sm:w-6 sm:h-6 ${i < Math.floor(averageRating) ? 'text-[#9DBE8D] fill-current' : 'text-gray-300'}`} />
+                <FiStar key={i} className={`w-5 h-5 sm:w-6 sm:h-6 ${i < Math.floor(averageRating) ? 'text-[#F48FB1] fill-current' : 'text-gray-300'}`} />
               ))}
               <span className="text-gray-600 ml-2 font-medium text-base sm:text-lg">
                 {averageRating.toFixed(1)} <span className="text-xs">({totalReviews} Bewertungen)</span>
@@ -275,7 +338,7 @@ export default function SalonPage() {
           {/* Buttons: smaller and side by side on mobile */}
           <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-4 mt-2 md:mt-0 w-full sm:w-auto">
             <button
-              className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold py-2 px-2 sm:py-3 sm:px-6 rounded-lg transition-all duration-200 text-xs sm:text-base"
+              className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-semibold py-2 px-2 sm:py-3 sm:px-6 rounded-lg transition-all duration-200 text-xs sm:text-base"
               onClick={scrollToServices}
             >
               Produkte ansehen
@@ -300,7 +363,7 @@ export default function SalonPage() {
                   aria-label="Scroll left"
                   style={{ display: salon.imageUrls.length > 1 ? "block" : "none" }}
                 >
-                  <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-[#5C6F68]" />
+                  <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-[#F48FB1]" />
                 </button>
                 <div
                   ref={carouselRef}
@@ -310,8 +373,9 @@ export default function SalonPage() {
                   {salon.imageUrls.map((url, i) => (
                     <div
                       key={i}
-                      className="min-w-0 w-full sm:min-w-[350px] sm:max-w-[600px] aspect-video sm:aspect-[16/10] flex-shrink-0"
+                      className="min-w-0 w-full sm:min-w-[350px] sm:max-w-[600px] aspect-video sm:aspect-[16/10] flex-shrink-0 cursor-pointer"
                       style={{ scrollSnapAlign: "center" }}
+                      onClick={() => setZoomedImage(url)}
                     >
                       <img
                         src={url}
@@ -332,7 +396,7 @@ export default function SalonPage() {
                   aria-label="Scroll right"
                   style={{ display: salon.imageUrls.length > 1 ? "block" : "none" }}
                 >
-                  <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-[#5C6F68] rotate-180" />
+                  <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-[#F48FB1] rotate-180" />
                 </button>
               </>
             )}
@@ -342,14 +406,18 @@ export default function SalonPage() {
         {/* Location & Contact */}
         <section className="w-full text-left mb-2">
           <div className="flex flex-col gap-2">
-            <div className="flex items-center text-gray-700">
-              <FiMapPin className="text-[#9DBE8D] w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
-              <span className="font-medium text-base sm:text-lg break-words">{salon.location}</span>
-            </div>
-            <div className="flex items-center text-gray-700">
-              <FiPhone className="text-[#5C6F68] w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
-              <span className="font-medium text-base sm:text-lg break-words">{salon.contact}</span>
-            </div>
+            {salon.location && (
+              <div className="flex items-center text-gray-700">
+                <FiMapPin className="text-[#F48FB1] w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+                <span className="font-medium text-base sm:text-lg break-words">{salon.location}</span>
+              </div>
+            )}
+            {salon.contact && (
+              <div className="flex items-center text-gray-700">
+                <FiPhone className="text-[#F48FB1] w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+                <span className="font-medium text-base sm:text-lg break-words">{salon.contact}</span>
+              </div>
+            )}
           </div>
         </section>
 
@@ -369,8 +437,8 @@ export default function SalonPage() {
                       <button
                         className={`w-full text-left px-4 sm:px-6 py-2 sm:py-4 rounded-lg font-medium transition-colors flex items-center justify-between whitespace-nowrap text-sm sm:text-base ${
                           selectedType === type
-                            ? "bg-[#E4DED5] text-[#1F1F1F] shadow-sm"
-                            : "bg-white text-[#5C6F68] hover:bg-[#E4DED5] hover:text-[#1F1F1F]"
+                            ? "bg-[#F48FB1] text-white shadow-sm"
+                            : "bg-white text-[#F48FB1] hover:bg-[#FCE4EC] hover:text-[#EC407A]"
                         }`}
                         onClick={() => setSelectedType(type)}
                       >
@@ -392,46 +460,90 @@ export default function SalonPage() {
                 {(selectedType === "Alle Produkte"
                   ? services.length > 0
                   : serviceTypeMap[selectedType ?? ""]?.length > 0) ? (
-                  <div className="space-y-0">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     {(selectedType === "Alle Produkte"
                       ? services
                       : serviceTypeMap[selectedType ?? ""]
                     ).map(service => (
-                      <div key={service._id} className="bg-white border border-[#E4DED5] first:rounded-t-lg last:rounded-b-lg hover:shadow-md transition-all duration-200 mb-4 sm:mb-0">
+                      <div key={service._id} className="bg-white border border-[#E4DED5] rounded-lg hover:shadow-md transition-all duration-200 flex flex-col">
                         {service.imageUrl && (
-                          <div className="w-full h-40 sm:h-48 overflow-hidden first:rounded-t-lg">
+                          <div className="w-full h-36 sm:h-44 overflow-hidden rounded-t-lg cursor-pointer" onClick={() => setZoomedImage(service.imageUrl!)}>
                             <img
                               src={service.imageUrl}
                               alt={service.name}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                             />
                           </div>
                         )}
-                        <div className="p-4 sm:p-6">
-                          <div className="flex flex-col sm:flex-row items-start justify-between mb-2 sm:mb-4 gap-2">
-                            <div className="flex-1">
-                              <h3 className="text-lg sm:text-xl font-semibold text-[#1F1F1F] mb-1 sm:mb-2">{service.name}</h3>
-                            </div>
-                            <button
-                              className="text-[#5C6F68] hover:text-[#4a5a54] border border-[#E4DED5] rounded px-3 py-1 text-xs sm:text-sm font-medium ml-0 sm:ml-4 mt-2 sm:mt-0"
-                              onClick={() => openServiceDetails(service)}
-                              type="button"
-                            >
-                              Details anzeigen
-                            </button>
+                        <div className="p-2 sm:p-3 flex flex-col flex-1">
+                          <div className="flex items-start justify-between mb-1 gap-1">
+                            <h3 className="text-sm sm:text-base font-semibold text-[#1F1F1F] leading-tight line-clamp-2">{service.name}</h3>
                           </div>
                           
-                          {/* Price / Variants */}
-                          {service.durationPrices && service.durationPrices.length > 0 ? (
-                            <div className="space-y-2 sm:space-y-3">
-                              <h4 className="text-xs sm:text-sm font-medium text-gray-700">Varianten:</h4>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                          {/* Price / Variants / Wear Duration Slider */}
+                          {service.wearDurationEnabled && (service.basePrice ?? service.pricePerDay) && service.minWearDays && service.maxWearDays ? (
+                            <div className="mt-auto pt-1">
+                              {(() => {
+                                const days = selectedWearDays[service._id] ?? service.minWearDays;
+                                const bp = service.basePrice ?? service.pricePerDay ?? 0;
+                                const epd = service.extraPricePerDay ?? 0;
+                                const min = service.minWearDays!;
+                                const computedPrice = bp + Math.max(0, days - min) * epd;
+                                const inCart = cartServices.find(s => s._id === service._id);
+                                const minPrice = bp;
+                                const maxPrice = bp + (service.maxWearDays! - min) * epd;
+                                return (
+                                  <>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-xs text-gray-500">Tage wählen:</span>
+                                      <span className="text-sm font-bold text-[#1F1F1F]">
+                                        {days} {days === 1 ? 'Tag' : 'Tage'} — <span className="text-[#F48FB1]">€{computedPrice.toFixed(2)}</span>
+                                      </span>
+                                    </div>
+                                    {days > min && epd > 0 && (
+                                      <p className="text-[10px] text-gray-400 mb-1">
+                                        €{bp.toFixed(2)} + {days - min} × €{epd.toFixed(2)}
+                                      </p>
+                                    )}
+                                    <input
+                                      type="range"
+                                      min={service.minWearDays}
+                                      max={service.maxWearDays}
+                                      step={1}
+                                      value={days}
+                                      disabled={!!inCart}
+                                      onChange={e => {
+                                        const newDays = Number(e.target.value);
+                                        setSelectedWearDays(prev => ({ ...prev, [service._id]: newDays }));
+                                      }}
+                                      style={{ accentColor: '#F48FB1' }}
+                                      className="w-full h-2 rounded-lg cursor-pointer disabled:opacity-50"
+                                    />
+                                    <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                                      <span>{min}T — €{minPrice.toFixed(2)}</span>
+                                      <span>{service.maxWearDays}T — €{maxPrice.toFixed(2)}</span>
+                                    </div>
+                                    <button
+                                      className={`mt-2 w-full font-semibold py-1 px-2 rounded-md transition-all text-xs ${
+                                        inCart ? 'bg-red-500 text-white' : 'bg-[#F48FB1] text-white hover:bg-[#EC407A]'
+                                      }`}
+                                      onClick={() => toggleServiceInCart(service)}
+                                    >
+                                      {inCart ? `✕ Entfernen (€${inCart.price.toFixed(2)})` : 'Hinzufügen'}
+                                    </button>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          ) : service.durationPrices && service.durationPrices.length > 0 ? (
+                            <div className="space-y-1 mt-auto">
+                              <div className="space-y-1">
                                 {service.durationPrices.map((option: { duration: number; price: number }, index: number) => (
                                   <div
                                     key={index}
-                                    className={`border-2 rounded-lg p-3 sm:p-4 cursor-pointer transition-colors ${
+                                    className={`border rounded-md p-1.5 sm:p-2 cursor-pointer transition-colors text-xs ${
                                       selectedDurations[service._id]?.duration === option.duration
-                                        ? 'border-[#5C6F68] bg-[#E4DED5]'
+                                        ? 'border-[#F48FB1] bg-[#E4DED5]'
                                         : 'border-gray-200 hover:border-gray-300'
                                     }`}
                                     onClick={() => {
@@ -443,20 +555,17 @@ export default function SalonPage() {
                                   >
                                     <div className="flex items-center justify-between">
                                       <div>
-                                        <div className="flex items-center text-gray-600 mb-1">
-                                          <FiClock className="w-4 h-4 mr-2" />
-                                          <span className="text-xs sm:text-sm">{option.duration} Minuten</span>
-                                        </div>
-                                        <div className="text-lg sm:text-xl font-bold text-[#1F1F1F]">€{option.price}</div>
+                                        <span className="text-xs text-gray-600">{option.duration} Min</span>
+                                        <div className="text-sm font-bold text-[#1F1F1F]">€{option.price}</div>
                                       </div>
                                       <button
-                                        className={`bg-white border-2 ${cartServices.find(s => s._id === service._id && s.selectedOption?.duration === option.duration) ? "border-[#9DBE8D] text-[#9DBE8D] bg-[#E4DED5]" : "border-[#FF6B6B] text-[#FF6B6B]"} hover:bg-[#FF6B6B] hover:text-white font-semibold py-1 sm:py-2 px-2 sm:px-4 rounded-lg transition-all duration-200 text-xs sm:text-sm`}
+                                        className={`font-semibold py-1 px-2 rounded-md transition-all text-xs ${cartServices.find(s => s._id === service._id && s.selectedOption?.duration === option.duration) ? "bg-red-500 text-white" : "bg-[#F48FB1] text-white hover:bg-[#EC407A]"}`}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           toggleServiceInCart(service, option);
                                         }}
                                       >
-                                        {cartServices.find(s => s._id === service._id && s.selectedOption?.duration === option.duration) ? "Entfernen" : "Hinzufügen"}
+                                        {cartServices.find(s => s._id === service._id && s.selectedOption?.duration === option.duration) ? "✕" : "+"}
                                       </button>
                                     </div>
                                   </div>
@@ -464,20 +573,96 @@ export default function SalonPage() {
                               </div>
                             </div>
                           ) : service.price != null && service.price > 0 ? (
-                            <div className="flex items-center justify-between border-2 border-gray-200 rounded-lg p-3 sm:p-4 hover:border-gray-300 transition-colors">
-                              <div className="text-lg sm:text-xl font-bold text-[#1F1F1F]">€{service.price}</div>
+                            <div className="flex items-center justify-between mt-auto pt-1">
+                              <div>
+                                <div className="text-sm sm:text-base font-bold text-[#1F1F1F]">€{service.price}</div>
+                                {service.timeWorn != null && service.timeWorn > 0 && (
+                                  <span className="text-[10px] sm:text-xs text-gray-500">
+                                    {service.timeWorn} {service.timeWorn === 1 ? "Tag" : "Tage"} getragen
+                                  </span>
+                                )}
+                              </div>
                               <button
-                                className={`bg-white border-2 ${cartServices.find(s => s._id === service._id) ? "border-[#9DBE8D] text-[#9DBE8D] bg-[#E4DED5]" : "border-[#FF6B6B] text-[#FF6B6B]"} hover:bg-[#FF6B6B] hover:text-white font-semibold py-1 sm:py-2 px-2 sm:px-4 rounded-lg transition-all duration-200 text-xs sm:text-sm`}
-                                onClick={() => toggleServiceInCart(service, { duration: 0, price: service.price || 0 })}
+                                className={`font-semibold py-1 px-2 sm:px-3 rounded-md transition-all text-xs ${cartServices.find(s => s._id === service._id) ? "bg-red-500 text-white" : "bg-[#F48FB1] text-white hover:bg-[#EC407A]"}`}
+                                onClick={() => {
+                                  toggleServiceInCart(service, { duration: 0, price: service.price || 0 });
+                                }}
                               >
-                                {cartServices.find(s => s._id === service._id) ? "Entfernen" : "Hinzufügen"}
+                                {cartServices.find(s => s._id === service._id) ? "✕" : "Hinzufügen"}
                               </button>
                             </div>
                           ) : (
-                            <div className="text-center py-2 sm:py-4 text-gray-500 text-xs sm:text-base">
+                            <div className="text-center py-1 text-gray-500 text-xs mt-auto">
                               Preis auf Anfrage
                             </div>
                           )}
+
+                          {/* Additional Services */}
+                          {service.additionalServices && service.additionalServices.length > 0 && (
+                            <div className="mt-2 border border-[#E4DED5] rounded-md p-2">
+                              <h4 className="text-[10px] sm:text-xs font-semibold text-[#1F1F1F] mb-1">Extras:</h4>
+                              <div className="space-y-1">
+                                {service.additionalServices.map((addon: { name: string; price: number }, idx: number) => {
+                                  const isChecked = (selectedAdditionals[service._id] || []).includes(addon.name);
+                                  return (
+                                      <div key={idx} className="flex items-center gap-1.5 cursor-pointer text-xs">
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={() => {
+                                              setSelectedAdditionals(prev => {
+                                                const current = prev[service._id] || [];
+                                                const updated = isChecked
+                                                  ? current.filter(n => n !== addon.name)
+                                                  : [...current, addon.name];
+                                                setCartServices(cartPrev => {
+                                                  const inCart = cartPrev.find(s => s._id === service._id);
+                                                  if (inCart) {
+                                                    // determine base price
+                                                    let basePrice: number;
+                                                    if (service.wearDurationEnabled) {
+                                                      const bp = service.basePrice ?? service.pricePerDay ?? 0;
+                                                      const epd = service.extraPricePerDay ?? 0;
+                                                      const min = service.minWearDays ?? 1;
+                                                      const days = inCart.selectedWearDays ?? min;
+                                                      basePrice = bp + Math.max(0, days - min) * epd;
+                                                    } else {
+                                                      basePrice = inCart.selectedOption?.price || service.price || 0;
+                                                    }
+                                                    const newAddonsTotal = updated.reduce((sum, name) => {
+                                                      const a = service.additionalServices?.find(x => x.name === name);
+                                                      return sum + (a?.price || 0);
+                                                    }, 0);
+                                                    return cartPrev.map(s => s._id === service._id ? {
+                                                      ...s,
+                                                      price: basePrice + newAddonsTotal,
+                                                      selectedAdditionalServices: updated,
+                                                    } : s);
+                                                  }
+                                                  return cartPrev;
+                                                });
+                                                return { ...prev, [service._id]: updated };
+                                              });
+                                            }}
+                                            className="accent-[#F48FB1] w-3 h-3"
+                                          />
+                                          <span className="flex-1 text-[#1F1F1F] truncate">{addon.name}</span>
+                                          <span className="text-green-700 font-semibold whitespace-nowrap">+€{addon.price}</span>
+                                        </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Details button */}
+                          <button
+                            className="mt-2 w-full text-[#F48FB1] hover:text-[#EC407A] border border-[#E4DED5] rounded-md py-1 text-xs font-medium transition-colors"
+                            onClick={() => openServiceDetails(service)}
+                            type="button"
+                          >
+                            Details
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -485,7 +670,7 @@ export default function SalonPage() {
                 ) : (
                   <div className="py-6 sm:py-12">
                     <div className="bg-white rounded-xl p-4 sm:p-8 shadow-sm border border-[#E4DED5] max-w-xs sm:max-w-md mx-auto">
-                      <FiScissors className="w-8 h-8 sm:w-12 sm:h-12 text-[#E4DED5] mb-2 sm:mb-4" />
+                      <GiUnderwear className="w-8 h-8 sm:w-12 sm:h-12 text-[#E4DED5] mb-2 sm:mb-4" />
                       <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1 sm:mb-2">Keine Produkte verfügbar</h3>
                       <p className="text-gray-600 text-xs sm:text-base">Dieser Verkäufer hat noch keine Produkte hinzugefügt.</p>
                     </div>
@@ -572,7 +757,7 @@ export default function SalonPage() {
               <div className="flex items-center gap-1 sm:gap-2">
                 <div className="flex">
                   {[...Array(5)].map((_, i) => (
-                    <FiStar key={i} className={`w-6 h-6 sm:w-8 sm:h-8 ${i < Math.floor(averageRating) ? 'text-[#9DBE8D] fill-current' : 'text-gray-300'}`} />
+                    <FiStar key={i} className={`w-6 h-6 sm:w-8 sm:h-8 ${i < Math.floor(averageRating) ? 'text-[#F48FB1] fill-current' : 'text-gray-300'}`} />
                   ))}
                 </div>
                 <span className="text-lg sm:text-2xl font-bold text-[#1F1F1F]">{averageRating.toFixed(1)}</span>
@@ -591,14 +776,14 @@ export default function SalonPage() {
                   <div className="flex flex-col sm:flex-row items-start justify-between mb-2 sm:mb-4 gap-2">
                     <div className="flex items-center gap-2 sm:gap-3">
                       <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#E4DED5] rounded-full flex items-center justify-center">
-                        <FiUser className="w-4 h-4 sm:w-5 sm:h-5 text-[#5C6F68]" />
+                        <FiUser className="w-4 h-4 sm:w-5 sm:h-5 text-[#F48FB1]" />
                       </div>
                       <div>
                         <h4 className="font-semibold text-[#1F1F1F] text-sm sm:text-base">{review.customerName}</h4>
                         <div className="flex items-center gap-1 sm:gap-2">
                           <div className="flex">
                             {[...Array(5)].map((_, i) => (
-                              <FiStar key={i} className={`w-3 h-3 sm:w-4 sm:h-4 ${i < review.rating ? 'text-[#9DBE8D] fill-current' : 'text-gray-300'}`} />
+                              <FiStar key={i} className={`w-3 h-3 sm:w-4 sm:h-4 ${i < review.rating ? 'text-[#F48FB1] fill-current' : 'text-gray-300'}`} />
                             ))}
                           </div>
                           <span className="text-xs sm:text-sm text-[#1F1F1F]">
@@ -631,7 +816,7 @@ export default function SalonPage() {
         {/* Cart summary fixed popup */}
         {cartServices.length > 0 && (
           <div
-            className="fixed bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 bg-[#E4DED5] border border-[#9DBE8D] shadow-lg rounded-2xl px-6 sm:px-10 py-4 sm:py-6 w-[calc(100%-16px)] sm:max-w-md lg:max-w-lg flex flex-col items-center"
+            className="fixed bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 bg-[#E4DED5] border border-[#F48FB1] shadow-lg rounded-2xl px-6 sm:px-10 py-4 sm:py-6 w-[calc(100%-16px)] sm:max-w-md lg:max-w-lg flex flex-col items-center"
             style={{
               maxWidth: 'calc(100% - 16px)',
               width: '100%',
@@ -646,7 +831,7 @@ export default function SalonPage() {
               </div>
               {/* Dropdown toggle */}
               <button
-                className="ml-2 text-[#5C6F68] hover:text-[#1F1F1F] font-semibold px-1 sm:px-2 py-0 sm:py-1 rounded text-sm"
+                className="ml-2 text-[#F48FB1] hover:text-[#1F1F1F] font-semibold px-1 sm:px-2 py-0 sm:py-1 rounded text-sm"
                 onClick={() => setShowCartDropdown(v => !v)}
                 aria-label="Ausgewählte Produkte anzeigen"
                 type="button"
@@ -660,33 +845,57 @@ export default function SalonPage() {
             {/* Dropdown list */}
             {showCartDropdown && (
               <ul className="w-full mb-2 bg-white rounded-lg border border-[#E4DED5] shadow p-2 sm:p-2 max-h-[200px] overflow-y-auto">
-                {cartServices.map(s => (
-                  <li key={`${s._id}-${s.selectedOption?.duration}`} className="flex justify-between items-center py-1 text-[#1F1F1F] text-xs sm:text-sm">
-                    <span>
-                      {s.name}
-                      {s.selectedOption && (
-                        <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs text-gray-600">
-                          ({s.selectedOption.duration} Min)
-                        </span>
-                      )}
-                    </span>
-                    <span className="flex items-center gap-1 sm:gap-2">
-                      €{s.price}
-                      <button
-                        className="ml-1 sm:ml-2 text-[#FF6B6B] hover:text-red-700 text-base sm:text-lg font-bold px-1 sm:px-2"
-                        aria-label={`Entfernen ${s.name}`}
-                        onClick={() => toggleServiceInCart(s)}
-                        type="button"
-                      >
-                        ×
-                      </button>
-                    </span>
+                {cartServices.map(s => {
+                  const addons = s.selectedAdditionalServices || [];
+                  const addonsList = s.additionalServices || [];
+                  const addonsTotal = addons.reduce((sum, name) => {
+                    const a = addonsList.find(x => x.name === name);
+                    return sum + (a?.price || 0);
+                  }, 0);
+                  const basePrice = (s.price || 0) - addonsTotal;
+                  return (
+                  <li key={`${s._id}-${s.selectedOption?.duration}`} className="py-1 text-[#1F1F1F] text-xs sm:text-sm border-b border-gray-100 last:border-0">
+                    <div className="flex justify-between items-center">
+                      <span>
+                        {s.name}
+                        {s.selectedOption && (
+                          <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs text-gray-600">
+                            ({s.selectedOption.duration} Min)
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1 sm:gap-2">
+                        €{addons.length > 0 ? basePrice : s.price}
+                        <button
+                          className="ml-1 sm:ml-2 text-[#FF6B6B] hover:text-red-700 text-base sm:text-lg font-bold px-1 sm:px-2"
+                          aria-label={`Entfernen ${s.name}`}
+                          onClick={() => toggleServiceInCart(s)}
+                          type="button"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    </div>
+                    {addons.length > 0 && (
+                      <div className="pl-2 mt-0.5 space-y-0.5">
+                        {addons.map((addonName, idx) => {
+                          const addon = addonsList.find(a => a.name === addonName);
+                          return (
+                            <div key={idx} className="flex justify-between text-[10px] sm:text-xs text-gray-500">
+                              <span>+ {addonName}</span>
+                              {addon && <span className="text-green-700">+€{addon.price}</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
             <button
-              className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold py-2 sm:py-2 px-4 sm:px-6 rounded-lg transition-all duration-200 w-full text-sm sm:text-base"
+              className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-semibold py-2 sm:py-2 px-4 sm:px-6 rounded-lg transition-all duration-200 w-full text-sm sm:text-base"
               onClick={proceedToBooking}
             >
               Weiter zur Anfrage ({cartServices.length})
@@ -696,10 +905,10 @@ export default function SalonPage() {
 
         {/* Service Details Popup */}
         {detailsService && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-2 p-6 relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDetailsService(null)}>
+            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-2 p-6 relative max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <button
-                className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-xl font-bold"
+                className="sticky top-0 float-right z-10 bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 rounded-full w-8 h-8 flex items-center justify-center text-xl font-bold transition-colors shadow-sm"
                 onClick={() => setDetailsService(null)}
                 aria-label="Schließen"
                 type="button"
@@ -708,24 +917,36 @@ export default function SalonPage() {
               </button>
               <h2 className="text-2xl font-bold text-[#1F1F1F] mb-2">{detailsService.name}</h2>
               {detailsService.imageUrl && (
-                <div className="w-full h-48 sm:h-64 overflow-hidden rounded-lg mb-4">
+                <div className="w-full h-64 sm:h-80 overflow-hidden rounded-lg mb-4 cursor-pointer" onClick={() => setZoomedImage(detailsService.imageUrl!)}>
                   <img
                     src={detailsService.imageUrl}
                     alt={detailsService.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                   />
                 </div>
               )}
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-1">
                   {[...Array(5)].map((_, i) => (
-                    <FiStar key={i} className={`w-5 h-5 ${i < Math.floor(serviceAverageRating) ? 'text-[#9DBE8D] fill-current' : 'text-gray-300'}`} />
+                    <FiStar key={i} className={`w-5 h-5 ${i < Math.floor(serviceAverageRating) ? 'text-[#F48FB1] fill-current' : 'text-gray-300'}`} />
                   ))}
                   <span className="text-base font-medium text-[#1F1F1F]">
                     {serviceAverageRating.toFixed(1)} <span className="text-xs text-gray-600">({serviceReviews.length} Bewertungen)</span>
                   </span>
                 </div>
                 <p className="text-gray-700 text-base">{detailsService.description}</p>
+                {/* Price and Time Worn */}
+                <div className="flex items-center gap-3 flex-wrap mt-3">
+                  {detailsService.price != null && detailsService.price > 0 && (
+                    <span className="text-xl font-bold text-[#1F1F1F]">€{detailsService.price}</span>
+                  )}
+                  {detailsService.timeWorn != null && detailsService.timeWorn > 0 && (
+                    <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                      {detailsService.timeWorn} {detailsService.timeWorn === 1 ? "Tag" : "Tage"} getragen
+                    </span>
+                  )}
+                </div>
+
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-[#1F1F1F] mb-2">Bewertungen für dieses Produkt</h3>
@@ -735,13 +956,13 @@ export default function SalonPage() {
                       <div key={review._id} className="border border-[#E4DED5] rounded-lg p-3">
                         <div className="flex items-center gap-2 mb-1">
                           <div className="w-7 h-7 bg-[#E4DED5] rounded-full flex items-center justify-center">
-                            <FiUser className="w-4 h-4 text-[#5C6F68]" />
+                            <FiUser className="w-4 h-4 text-[#F48FB1]" />
                           </div>
                           <span className="font-semibold text-sm text-[#1F1F1F]">{review.customerName}</span>
                           <span className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
                           <div className="flex ml-2">
                             {[...Array(5)].map((_, i) => (
-                              <FiStar key={i} className={`w-3 h-3 ${i < review.rating ? 'text-[#9DBE8D] fill-current' : 'text-gray-300'}`} />
+                              <FiStar key={i} className={`w-3 h-3 ${i < review.rating ? 'text-[#F48FB1] fill-current' : 'text-gray-300'}`} />
                             ))}
                           </div>
                         </div>
@@ -762,6 +983,35 @@ export default function SalonPage() {
       </div>
       {/* Footer outside main content for full width */}
       <Footer />
+      {currentUser && (
+        <ChatWidget
+          userUid={currentUser.uid}
+          userName={currentUser.name || currentUser.username || currentUser.email || 'Käufer'}
+          userRole="buyer"
+        />
+      )}
+
+      {/* Image Zoom Modal */}
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setZoomedImage(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 flex items-center justify-center text-2xl font-bold z-10 transition"
+            onClick={() => setZoomedImage(null)}
+            aria-label="Schließen"
+          >
+            ×
+          </button>
+          <img
+            src={zoomedImage}
+            alt="Zoomed"
+            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </main>
   );
 }

@@ -4,10 +4,10 @@ import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
 };
 
 export default function AboutPage() {
@@ -22,7 +22,7 @@ export default function AboutPage() {
               className="text-4xl font-bold mb-4"
               style={{ color: COLORS.primary }}
             >
-              Über mollytime
+              Über tastyslips
             </h1>
             <p className="text-lg text-gray-600 max-w-xl mx-auto">
               Dein diskreter Marktplatz für exklusive Artikel – sicher, anonym
@@ -39,7 +39,7 @@ export default function AboutPage() {
               Unsere Mission
             </h2>
             <p className="text-gray-700 leading-relaxed mb-4">
-              mollytime verbindet Verkäufer und Käufer auf einer diskreten
+              tastyslips verbindet Verkäufer und Käufer auf einer diskreten
               Plattform. Wir schaffen einen sicheren Raum, in dem exklusive
               Artikel wie Socken, Unterwäsche, Sportbekleidung und mehr
               gehandelt werden können – ohne Umwege und mit maximaler

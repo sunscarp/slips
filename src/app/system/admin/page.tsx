@@ -3,10 +3,10 @@ import React, { useState, useEffect } from "react";
 
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
 };
 
 
@@ -37,19 +37,6 @@ export default function AdminDashboard() {
   const [showUserHistoryModal, setShowUserHistoryModal] = useState(false);
   const [historyUser, setHistoryUser] = useState<{ email: string; uid: string } | null>(null);
   
-  // New plan management state
-  const [plans, setPlans] = useState<any[]>([]);
-  const [showPlanManagement, setShowPlanManagement] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<any>(null);
-  const [showPlanModal, setShowPlanModal] = useState(false);
-  const [newPlan, setNewPlan] = useState({
-    name: '',
-    price: '',
-    description: '',
-    features: [''],
-    order: 1
-  });
-
   // Ticket management state
   const [showTickets, setShowTickets] = useState(false);
   const [allTickets, setAllTickets] = useState<any[]>([]);
@@ -65,7 +52,6 @@ export default function AdminDashboard() {
     // Fetch salons and users data
     if (email === "system@gmail.com") {
       fetchSalonsAndUsers();
-      fetchPlans();
     }
   }, []);
 
@@ -256,13 +242,12 @@ export default function AdminDashboard() {
         throw new Error(errMsg || "Fehler beim Erstellen des Benutzers.");
       }
 
-      // 2. Create salon in /api/salons with default founders plan
+      // 2. Create salon in /api/salons
       const salonRes = await fetch("/api/salons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          email: salonEmail,
-          plan: "founders" // Default plan for new salons
+          email: salonEmail
         }),
       });
       if (!salonRes.ok) {
@@ -342,44 +327,7 @@ export default function AdminDashboard() {
     });
   };
 
-  // Add missing handlePlanChange function
-  const handlePlanChange = async (email: string, newPlan: string) => {
-    try {
-      const res = await fetch("/api/salons", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email,
-          plan: newPlan,
-        }),
-      });
-      
-      if (res.ok) {
-        setDeleteStatus(`Plan zu "${newPlan}" geändert.`);
-        fetchSalonsAndUsers(); // Refresh the salon list
-      } else {
-        const errorData = await res.json();
-        setDeleteStatus(`Fehler beim Ändern des Plans. ${errorData.error || 'Unbekannter Fehler'}`);
-      }
-    } catch (error: any) {
-      setDeleteStatus(`Fehler beim Ändern des Plans. ${error?.message || ""}`);
-    }
-  };
 
-  const fetchPlans = async () => {
-    try {
-      const res = await fetch("/api/plans");
-      if (res.ok) {
-        const data = await res.json();
-        setPlans(data.plans || []);
-      } else {
-        setPlans([]);
-      }
-    } catch (error) {
-      setPlans([]);
-      console.error("Error fetching plans:", error);
-    }
-  };
 
   const fetchTickets = async () => {
     try {
@@ -449,101 +397,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleCreatePlan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPlan.name || !newPlan.price) {
-      setDeleteStatus("Name und Preis sind erforderlich.");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/plans", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...newPlan,
-          features: newPlan.features.filter(f => f.trim() !== '')
-        }),
-      });
-
-      if (res.ok) {
-        setDeleteStatus("Plan erfolgreich erstellt.");
-        setNewPlan({ name: '', price: '', description: '', features: [''], order: 1 });
-        setShowPlanModal(false);
-        fetchPlans();
-      } else {
-        const error = await res.json();
-        setDeleteStatus(`Fehler beim Erstellen des Plans: ${error.error}`);
-      }
-    } catch (error: any) {
-      setDeleteStatus(`Fehler beim Erstellen des Plans: ${error.message}`);
-    }
-  };
-
-  const handleUpdatePlan = async (plan: any) => {
-    try {
-      const res = await fetch("/api/plans", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(plan),
-      });
-
-      if (res.ok) {
-        setDeleteStatus("Plan erfolgreich aktualisiert.");
-        setEditingPlan(null);
-        fetchPlans();
-      } else {
-        const error = await res.json();
-        setDeleteStatus(`Fehler beim Aktualisieren des Plans: ${error.error}`);
-      }
-    } catch (error: any) {
-      setDeleteStatus(`Fehler beim Aktualisieren des Plans: ${error.message}`);
-    }
-  };
-
-  const handleDeletePlan = async (planId: string) => {
-    if (!confirm("Plan wirklich löschen?")) return;
-
-    try {
-      const res = await fetch("/api/plans", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ _id: planId }),
-      });
-
-      if (res.ok) {
-        setDeleteStatus("Plan erfolgreich gelöscht.");
-        fetchPlans();
-      } else {
-        const error = await res.json();
-        setDeleteStatus(`Fehler beim Löschen des Plans: ${error.error}`);
-      }
-    } catch (error: any) {
-      setDeleteStatus(`Fehler beim Löschen des Plans: ${error.message}`);
-    }
-  };
-
-  const addFeature = () => {
-    setNewPlan(prev => ({
-      ...prev,
-      features: [...prev.features, '']
-    }));
-  };
-
-  const updateFeature = (index: number, value: string) => {
-    setNewPlan(prev => ({
-      ...prev,
-      features: prev.features.map((f, i) => i === index ? value : f)
-    }));
-  };
-
-  const removeFeature = (index: number) => {
-    setNewPlan(prev => ({
-      ...prev,
-      features: prev.features.filter((_, i) => i !== index)
-    }));
-  };
-
   // --- New: Stat cards for dashboard look ---
   const statCards = [
     {
@@ -576,16 +429,6 @@ export default function AdminDashboard() {
         </svg>
       ),
     },
-    {
-      id: "plans",
-      title: "Pläne",
-      value: plans.length,
-      icon: (
-        <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-    },
   ];
 
   return (
@@ -604,7 +447,7 @@ export default function AdminDashboard() {
           margin: "0 auto",
           background: "#fff",
           borderRadius: 18,
-          boxShadow: "0 4px 24px #5C6F6815",
+          boxShadow: "0 4px 24px #F48FB115",
           padding: "2.5rem 2rem",
           color: "#000",
         }}
@@ -644,7 +487,7 @@ export default function AdminDashboard() {
                 background: "#f9fafb",
                 borderRadius: 12,
                 padding: "1.5rem 1.2rem",
-                boxShadow: "0 1px 4px #5C6F6810",
+                boxShadow: "0 1px 4px #F48FB110",
                 display: "flex",
                 alignItems: "center",
                 gap: 16,
@@ -658,7 +501,7 @@ export default function AdminDashboard() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 1px 4px #5C6F6810",
+                boxShadow: "0 1px 4px #F48FB110",
               }}>
                 {card.icon}
               </div>
@@ -669,535 +512,6 @@ export default function AdminDashboard() {
             </div>
           ))}
         </div>
-
-        {/* --- Section: Plan Management --- */}
-        <h2
-          style={{
-            fontWeight: 600,
-            fontSize: "1.2rem",
-            color: "#222",
-            marginBottom: 16,
-            marginTop: 24,
-            letterSpacing: -0.5,
-          }}
-        >
-          Plan-Verwaltung
-        </h2>
-        <div style={{ display: "flex", gap: "12px", marginBottom: 16, flexWrap: "wrap" }}>
-          <button
-            onClick={() => {
-              setShowPlanManagement(!showPlanManagement);
-              if (!showPlanManagement) fetchPlans();
-            }}
-            style={{
-              background: COLORS.primary,
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              padding: "0.75rem 1.5rem",
-              fontWeight: 600,
-              fontSize: "1rem",
-              cursor: "pointer",
-              transition: "background 0.2s",
-              boxShadow: "0 1px 4px #5C6F6810",
-            }}
-            onMouseOver={(e) => e.currentTarget.style.background = "#4a5a54"}
-            onMouseOut={(e) => e.currentTarget.style.background = COLORS.primary}
-          >
-            {showPlanManagement ? "Plan-Verwaltung verstecken" : "Pläne verwalten"}
-          </button>
-          {showPlanManagement && (
-            <button
-              onClick={() => setShowPlanModal(true)}
-              style={{
-                background: COLORS.highlight,
-                color: "#000",
-                border: "none",
-                borderRadius: 8,
-                padding: "0.75rem 1.5rem",
-                fontWeight: 600,
-                fontSize: "1rem",
-                cursor: "pointer",
-                transition: "background 0.2s",
-                boxShadow: "0 1px 4px #5C6F6810",
-              }}
-            >
-              Neuen Plan erstellen
-            </button>
-          )}
-        </div>
-
-        {showPlanManagement && (
-          <div style={{
-            background: "#f8f9fa",
-            borderRadius: 8,
-            padding: "1rem",
-            marginBottom: 24,
-            border: `1px solid ${COLORS.primary}20`,
-          }}>
-            <h3 style={{
-              fontWeight: 600,
-              fontSize: "1.1rem",
-              color: "#000",
-              marginBottom: 16,
-            }}>
-              Verfügbare Pläne ({plans.length})
-            </h3>
-            {plans.length === 0 ? (
-              <p style={{ color: "#666", fontStyle: "italic" }}>Keine Pläne gefunden.</p>
-            ) : (
-              <div style={{ display: "grid", gap: "16px" }}>
-                {plans.map((plan, idx) => (
-                  <div
-                    key={plan._id || idx}
-                    style={{
-                      background: "#fff",
-                      borderRadius: 8,
-                      padding: "1.5rem",
-                      border: `1px solid ${COLORS.primary}15`,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      flexWrap: "wrap",
-                      gap: "16px",
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: "300px" }}>
-                      {editingPlan?._id === plan._id ? (
-                        <div style={{ display: "grid", gap: "12px" }}>
-                          <input
-                            type="text"
-                            value={editingPlan.name}
-                            onChange={(e) => setEditingPlan({...editingPlan, name: e.target.value})}
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 6,
-                              border: "1px solid #ccc",
-                              fontSize: "1rem",
-                              fontWeight: 600,
-                            }}
-                          />
-                          <input
-                            type="number"
-                            value={editingPlan.price}
-                            onChange={(e) => setEditingPlan({...editingPlan, price: e.target.value})}
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 6,
-                              border: "1px solid #ccc",
-                              fontSize: "1rem",
-                            }}
-                          />
-                          <textarea
-                            value={editingPlan.description}
-                            onChange={(e) => setEditingPlan({...editingPlan, description: e.target.value})}
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 6,
-                              border: "1px solid #ccc",
-                              fontSize: "0.9rem",
-                              minHeight: "60px",
-                              resize: "vertical",
-                            }}
-                          />
-                          <div>
-                            <label style={{ fontSize: "0.9rem", fontWeight: 500, marginBottom: 4, display: "block" }}>
-                              Features:
-                            </label>
-                            {editingPlan.features.map((feature: string, featureIdx: number) => (
-                              <div key={featureIdx} style={{ display: "flex", gap: "8px", marginBottom: "4px" }}>
-                                <input
-                                  type="text"
-                                  value={feature}
-                                  onChange={(e) => {
-                                    const newFeatures = [...editingPlan.features];
-                                    newFeatures[featureIdx] = e.target.value;
-                                    setEditingPlan({...editingPlan, features: newFeatures});
-                                  }}
-                                  style={{
-                                    flex: 1,
-                                    padding: "4px 8px",
-                                    borderRadius: 4,
-                                    border: "1px solid #ccc",
-                                    fontSize: "0.85rem",
-                                  }}
-                                />
-                                <button
-                                  onClick={() => {
-                                    const newFeatures = editingPlan.features.filter((_: any, i: number) => i !== featureIdx);
-                                    setEditingPlan({...editingPlan, features: newFeatures});
-                                  }}
-                                  style={{
-                                    background: "#ef4444",
-                                    color: "#fff",
-                                    border: "none",
-                                    borderRadius: 4,
-                                    padding: "4px 8px",
-                                    fontSize: "0.75rem",
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                            <button
-                              onClick={() => setEditingPlan({...editingPlan, features: [...editingPlan.features, '']})}
-                              style={{
-                                background: COLORS.highlight,
-                                color: "#000",
-                                border: "none",
-                                borderRadius: 4,
-                                padding: "4px 8px",
-                                fontSize: "0.75rem",
-                                cursor: "pointer",
-                                marginTop: "4px",
-                              }}
-                            >
-                              + Feature hinzufügen
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <h4 style={{
-                            fontWeight: 700,
-                            color: "#000",
-                            marginBottom: 8,
-                            fontSize: "1.2rem",
-                          }}>
-                            {plan.name}
-                          </h4>
-                          <div style={{
-                            fontSize: "1.5rem",
-                            fontWeight: 700,
-                            color: COLORS.primary,
-                            marginBottom: 8,
-                          }}>
-                            €{plan.price}/Monat
-                          </div>
-                          <p style={{
-                            color: "#666",
-                            fontSize: "0.95rem",
-                            marginBottom: 12,
-                            lineHeight: 1.4,
-                          }}>
-                            {plan.description}
-                          </p>
-                          <div>
-                            <strong style={{ fontSize: "0.9rem", color: "#333" }}>Features:</strong>
-                            <ul style={{ marginTop: 4, paddingLeft: 20 }}>
-                              {plan.features?.map((feature: string, featureIdx: number) => (
-                                <li key={featureIdx} style={{ fontSize: "0.85rem", color: "#666", marginBottom: 2 }}>
-                                  {feature}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {editingPlan?._id === plan._id ? (
-                        <>
-                          <button
-                            onClick={() => handleUpdatePlan(editingPlan)}
-                            style={{
-                              background: "#22c55e",
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: 6,
-                              padding: "0.5rem 1rem",
-                              fontWeight: 500,
-                              fontSize: "0.9rem",
-                              cursor: "pointer",
-                            }}
-                          >
-                            ✓ Speichern
-                          </button>
-                          <button
-                            onClick={() => setEditingPlan(null)}
-                            style={{
-                              background: "#94a3b8",
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: 6,
-                              padding: "0.5rem 1rem",
-                              fontWeight: 500,
-                              fontSize: "0.9rem",
-                              cursor: "pointer",
-                            }}
-                          >
-                            Abbrechen
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => setEditingPlan(plan)}
-                            style={{
-                              background: COLORS.highlight,
-                              color: "#000",
-                              border: "none",
-                              borderRadius: 6,
-                              padding: "0.5rem 1rem",
-                              fontWeight: 500,
-                              fontSize: "0.9rem",
-                              cursor: "pointer",
-                            }}
-                          >
-                            ✏️ Bearbeiten
-                          </button>
-                          <button
-                            onClick={() => handleDeletePlan(plan._id)}
-                            style={{
-                              background: "#ef4444",
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: 6,
-                              padding: "0.5rem 1rem",
-                              fontWeight: 500,
-                              fontSize: "0.9rem",
-                              cursor: "pointer",
-                            }}
-                          >
-                            🗑️ Löschen
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Create Plan Modal */}
-        {showPlanModal && (
-          <div style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px",
-          }}>
-            <div style={{
-              background: "#fff",
-              borderRadius: 12,
-              padding: "24px",
-              maxWidth: "500px",
-              width: "100%",
-              maxHeight: "90vh",
-              overflowY: "auto",
-            }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 20,
-              }}>
-                <h3 style={{ fontSize: "1.2rem", fontWeight: 600, color: "#000", margin: 0 }}>
-                  Neuen Plan erstellen
-                </h3>
-                <button
-                  onClick={() => setShowPlanModal(false)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    fontSize: "1.5rem",
-                    cursor: "pointer",
-                    color: "#666",
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              
-              <form onSubmit={handleCreatePlan} style={{ display: "grid", gap: "16px" }}>
-                <div>
-                  <label style={{ fontSize: "0.9rem", fontWeight: 500, marginBottom: 4, display: "block" }}>
-                    Plan Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={newPlan.name}
-                    onChange={(e) => setNewPlan({...newPlan, name: e.target.value})}
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      borderRadius: 6,
-                      border: "1px solid #ccc",
-                      fontSize: "1rem",
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ fontSize: "0.9rem", fontWeight: 500, marginBottom: 4, display: "block" }}>
-                    Preis (€/Monat) *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newPlan.price}
-                    onChange={(e) => setNewPlan({...newPlan, price: e.target.value})}
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      borderRadius: 6,
-                      border: "1px solid #ccc",
-                      fontSize: "1rem",
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ fontSize: "0.9rem", fontWeight: 500, marginBottom: 4, display: "block" }}>
-                    Beschreibung
-                  </label>
-                  <textarea
-                    value={newPlan.description}
-                    onChange={(e) => setNewPlan({...newPlan, description: e.target.value})}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      borderRadius: 6,
-                      border: "1px solid #ccc",
-                      fontSize: "0.9rem",
-                      minHeight: "80px",
-                      resize: "vertical",
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ fontSize: "0.9rem", fontWeight: 500, marginBottom: 4, display: "block" }}>
-                    Features
-                  </label>
-                  {newPlan.features.map((feature, idx) => (
-                    <div key={idx} style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
-                      <input
-                        type="text"
-                        value={feature}
-                        onChange={(e) => updateFeature(idx, e.target.value)}
-                        placeholder="Feature beschreiben..."
-                        style={{
-                          flex: 1,
-                          padding: "6px 10px",
-                          borderRadius: 4,
-                          border: "1px solid #ccc",
-                          fontSize: "0.85rem",
-                        }}
-                      />
-                      {newPlan.features.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeFeature(idx)}
-                          style={{
-                            background: "#ef4444",
-                            color: "#fff",
-                            border: "none",
-                            borderRadius: 4,
-                            padding: "6px 10px",
-                            fontSize: "0.75rem",
-                            cursor: "pointer",
-                          }}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addFeature}
-                    style={{
-                      background: COLORS.highlight,
-                      color: "#000",
-                      border: "none",
-                      borderRadius: 4,
-                      padding: "6px 12px",
-                      fontSize: "0.8rem",
-                      cursor: "pointer",
-                      marginTop: "4px",
-                    }}
-                  >
-                    + Feature hinzufügen
-                  </button>
-                </div>
-                
-                <div>
-                  <label style={{ fontSize: "0.9rem", fontWeight: 500, marginBottom: 4, display: "block" }}>
-                    Reihenfolge
-                  </label>
-                  <input
-                    type="number"
-                    value={newPlan.order}
-                    onChange={(e) => setNewPlan({...newPlan, order: parseInt(e.target.value) || 1})}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      borderRadius: 6,
-                      border: "1px solid #ccc",
-                      fontSize: "1rem",
-                    }}
-                  />
-                </div>
-                
-                <div style={{
-                  display: "flex",
-                  gap: "12px",
-                  marginTop: 20,
-                  paddingTop: 20,
-                  borderTop: "1px solid #e5e7eb",
-                }}>
-                  <button
-                    type="submit"
-                    style={{
-                      flex: 1,
-                      background: COLORS.primary,
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "12px",
-                      fontSize: "1rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Plan erstellen
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowPlanModal(false)}
-                    style={{
-                      flex: 1,
-                      background: "#94a3b8",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "12px",
-                      fontSize: "1rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Abbrechen
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
         {/* --- Section: Create Salon --- */}
         <h2
@@ -1268,7 +582,7 @@ export default function AdminDashboard() {
               fontSize: "1rem",
               cursor: "pointer",
               transition: "background 0.2s",
-              boxShadow: "0 1px 4px #5C6F6810",
+              boxShadow: "0 1px 4px #F48FB110",
             }}
           >
             Verkäufer-Account erstellen
@@ -1329,9 +643,9 @@ export default function AdminDashboard() {
             cursor: "pointer",
             marginBottom: 16,
             transition: "background 0.2s",
-            boxShadow: "0 1px 4px #5C6F6810",
+            boxShadow: "0 1px 4px #F48FB110",
           }}
-          onMouseOver={(e) => e.currentTarget.style.background = "#4a5a54"}
+          onMouseOver={(e) => e.currentTarget.style.background = "#EC407A"}
           onMouseOut={(e) => e.currentTarget.style.background = COLORS.primary}
         >
           {showSalonList ? "Verkäufer-Liste verstecken" : "Alle Verkäufer anzeigen"}
@@ -1455,69 +769,8 @@ export default function AdminDashboard() {
                       }}>
                         📞 {salon.contact || "Kein Kontakt"}
                       </p>
-                      {/* Plan Management */}
-                      <div style={{ marginTop: 12 }}>
-                        <label style={{ fontSize: "0.92rem", color: "#333", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                          Aktueller Plan:
-                        </label>
-                        <select
-                          value={salon.plan || "founders"}
-                          onChange={async (e) => {
-                            const newPlan = e.target.value;
-                            setDeleteStatus("Plan wird geändert...");
-                            await handlePlanChange(salon.email, newPlan);
-                          }}
-                          style={{
-                            padding: "4px 8px",
-                            borderRadius: 4,
-                            border: "1px solid #ccc",
-                            fontSize: "0.85rem",
-                            color: "#000",
-                            background: "#fff",
-                          }}
-                        >
-                          <option value="founders">Founders Plan - €0/Monat</option>
-                          <option value="startup">Startup Plan - €29/Monat</option>
-                          <option value="grow">Grow Plan - €59/Monat</option>
-                          <option value="unicorn">Unicorn Plan - €99/Monat</option>
-                          <option value="custom">Custom Plan - Individuell</option>
-                        </select>
-                        <div style={{ fontSize: "0.8rem", color: "#666", marginTop: 2 }}>
-                          {(() => {
-                            const planDescriptions: Record<"founders" | "startup" | "grow" | "unicorn" | "custom", string> = {
-                              founders: "Alle Features inklusive - Kostenlos für neue Kunden",
-                              startup: "Basis Features - Keine Analytics/Kalender",
-                              grow: "Mit Kalender für wachsende Salons",
-                              unicorn: "Premium Features mit vollständiger Analytics",
-                              custom: "Individueller Plan nach Absprache"
-                            };
-                            const planKey = (salon.plan || "founders") as "founders" | "startup" | "grow" | "unicorn" | "custom";
-                            return planDescriptions[planKey] || "Plan nicht gefunden";
-                          })()}
-                        </div>
-                      </div>
                     </div>
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      <button
-                        onClick={() => window.open(`/admin/analytics?salonUid=${encodeURIComponent(salon.uid || '')}`, '_blank')}
-                        style={{
-                          background: COLORS.highlight,
-                          color: "#000",
-                          border: "none",
-                          borderRadius: 6,
-                          padding: "0.5rem 1rem",
-                          fontWeight: 500,
-                          fontSize: "0.9rem",
-                          cursor: "pointer",
-                          transition: "background 0.2s",
-                        }}
-                        onMouseOver={(e) => e.currentTarget.style.background = "#8aa97a"}
-                        onMouseOut={(e) => e.currentTarget.style.background = COLORS.highlight}
-                        disabled={!salon.uid}
-                        title={!salon.uid ? "Keine Analytics verfügbar (UID fehlt)" : "Verkäufer-Dashboard öffnen"}
-                      >
-                        🏢 Verkäufer-Dashboard
-                      </button>
                       <button
                         onClick={() => window.open(`/salon/${salon.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")}`, '_blank')}
                         style={{
@@ -1531,7 +784,7 @@ export default function AdminDashboard() {
                           cursor: "pointer",
                           transition: "background 0.2s",
                         }}
-                        onMouseOver={(e) => e.currentTarget.style.background = "#4a5a54"}
+                        onMouseOver={(e) => e.currentTarget.style.background = "#EC407A"}
                         onMouseOut={(e) => e.currentTarget.style.background = COLORS.primary}
                         disabled={!salon.name}
                         title="Verkäufer-Seite anzeigen"
@@ -1592,65 +845,6 @@ export default function AdminDashboard() {
                   </div>
                 ))}
 
-                {/* --- New: Plan management section in salon list --- */}
-                {allSalons.length > 0 && (
-                  <div style={{
-                    marginTop: 24,
-                    paddingTop: 16,
-                    borderTop: `1px solid ${COLORS.primary}10`,
-                  }}>
-                    <h3 style={{
-                      fontWeight: 600,
-                      fontSize: "1.1rem",
-                      color: "#000",
-                      marginBottom: 16,
-                    }}>
-                      Plan-Management für Verkäufer
-                    </h3>
-                    {allSalons.map(salon => (
-                      <div key={salon._id} style={{
-                        background: "#f9fafb",
-                        borderRadius: 8,
-                        padding: "1rem",
-                        border: `1px solid ${COLORS.primary}15`,
-                        marginBottom: 12,
-                      }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div>
-                            <strong style={{ fontSize: "1rem", color: "#222" }}>{salon.name}</strong>
-                            <div style={{ fontSize: "0.85rem", color: "#666" }}>
-                              {salon.email} | {salon.location}
-                            </div>
-                          </div>
-                          <div>
-                            <select
-                              value={salon.plan || "founders"}
-                              onChange={async (e) => {
-                                const newPlan = e.target.value;
-                                setDeleteStatus("Plan wird geändert...");
-                                await handlePlanChange(salon.email, newPlan);
-                              }}
-                              style={{
-                                padding: "4px 8px",
-                                borderRadius: 4,
-                                border: "1px solid #ccc",
-                                fontSize: "0.85rem",
-                                color: "#000",
-                                background: "#fff",
-                              }}
-                            >
-                              <option value="founders">Founders Plan - €0/Monat</option>
-                              <option value="startup">Startup Plan - €29/Monat</option>
-                              <option value="grow">Grow Plan - €59/Monat</option>
-                              <option value="unicorn">Unicorn Plan - €99/Monat</option>
-                              <option value="custom">Custom Plan - Individuell</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -1687,9 +881,9 @@ export default function AdminDashboard() {
             cursor: "pointer",
             marginBottom: 16,
             transition: "background 0.2s",
-            boxShadow: "0 1px 4px #5C6F6810",
+            boxShadow: "0 1px 4px #F48FB110",
           }}
-          onMouseOver={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = "#4a5a54")}
+          onMouseOver={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = "#EC407A")}
           onMouseOut={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = COLORS.primary)}
         >
           {showUserList ? "Benutzer-Liste verstecken" : "Alle Benutzer anzeigen"}
@@ -1771,66 +965,6 @@ export default function AdminDashboard() {
                             }}>
                               {user.email || "Unbekannter Käufer"}
                             </h4>
-                            <div style={{
-                              padding: "2px 8px",
-                              borderRadius: 12,
-                              fontSize: "0.75rem",
-                              fontWeight: 500,
-                              color: "#fff",
-                              background: getRatingColor(stats.rating),
-                            }}>
-                              {getRatingLabel(stats.rating)}
-                            </div>
-                          </div>
-                          {/* Customer Rating & Stats */}
-                          <div style={{
-                            background: "#f8f9fa",
-                            padding: "8px",
-                            borderRadius: 6,
-                            marginTop: 8,
-                          }}>
-                            <div style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                              marginBottom: 4,
-                            }}>
-                              <span style={{
-                                fontSize: "1.1rem",
-                                color: getRatingColor(stats.rating),
-                              }}>
-                                {getRatingStars(stats.rating)}
-                              </span>
-                              <span style={{
-                                fontSize: "0.9rem",
-                                fontWeight: 600,
-                                color: getRatingColor(stats.rating),
-                              }}>
-                                {stats.rating}/5
-                              </span>
-                            </div>
-                            <div style={{
-                              fontSize: "0.8rem",
-                              color: "#666",
-                              display: "grid",
-                              gridTemplateColumns: "repeat(2, 1fr)",
-                              gap: "4px",
-                            }}>
-                              <span>📅 Gesamt: {stats.total}</span>
-                              <span style={{ color: "#22c55e" }}>✅ Abgeschlossen: {stats.completed}</span>
-                              <span style={{ color: "#f59e0b" }}>❌ Storniert: {stats.cancelled}</span>
-                              <span style={{ color: "#ef4444" }}>🚫 Abgelehnt: {stats.noShow}</span>
-                            </div>
-                            {stats.total > 0 && (
-                              <div style={{
-                                fontSize: "0.75rem",
-                                color: "#666",
-                                marginTop: 4,
-                                fontStyle: "italic",
-                              }}>
-                                Abschlussrate: {((stats.completed / stats.total) * 100).toFixed(1)}%
-                              </div>
-                            )}
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -1861,7 +995,7 @@ export default function AdminDashboard() {
                               setShowUserHistoryModal(true);
                             }}
                             style={{
-                              background: "#5C6F68",
+                              background: "#F48FB1",
                               color: "#fff",
                               border: "none",
                               borderRadius: 6,
@@ -1944,7 +1078,7 @@ export default function AdminDashboard() {
                       onClick={fetchAllBookings}
                       style={{
                         marginTop: 16,
-                        background: "#5C6F68",
+                        background: "#F48FB1",
                         color: "#fff",
                         border: "none",
                         borderRadius: 6,
@@ -2052,9 +1186,9 @@ export default function AdminDashboard() {
             cursor: "pointer",
             marginBottom: 16,
             transition: "background 0.2s",
-            boxShadow: "0 1px 4px #5C6F6810",
+            boxShadow: "0 1px 4px #F48FB110",
           }}
-          onMouseOver={(e) => e.currentTarget.style.background = "#4a5a54"}
+          onMouseOver={(e) => e.currentTarget.style.background = "#EC407A"}
           onMouseOut={(e) => e.currentTarget.style.background = COLORS.primary}
         >
           {showAllBookings ? "Bestellungen verstecken" : "Alle Bestellungen anzeigen"}
@@ -2623,7 +1757,7 @@ export default function AdminDashboard() {
                     key={s}
                     onClick={() => handleTicketStatusChange(selectedTicket._id, s)}
                     style={{
-                      background: selectedTicket.status === s ? '#5C6F68' : '#e5e7eb',
+                      background: selectedTicket.status === s ? '#F48FB1' : '#e5e7eb',
                       color: selectedTicket.status === s ? '#fff' : '#374151',
                       border: "none",
                       borderRadius: 6,

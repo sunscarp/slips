@@ -5,10 +5,10 @@ import Footer from "@/components/footer";
 import ChatWidget from "../../../components/ChatWidget";
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
   lightGray: "#F8F9FA",
   border: "#E5E7EB",
   success: "#10B981",

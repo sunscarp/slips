@@ -6,10 +6,11 @@ import ChatWidget from "../../../components/ChatWidget";
 import { useSearchParams } from "next/navigation";
 import { 
   FiTrendingUp, FiUsers, FiClock, /*FiDollarSign,*/ FiCalendar, 
-  FiScissors, FiStar, FiTarget, FiBarChart, FiPieChart,
+  FiStar, FiTarget, FiBarChart, FiPieChart,
   FiActivity, FiUserCheck, FiTrendingDown, FiAlertCircle, FiArrowLeft
 } from "react-icons/fi";
 import { FaEuroSign } from "react-icons/fa";
+import { GiUnderwear } from "react-icons/gi";
 
 type AnalyticsData = {
   totalRevenue: number;
@@ -31,6 +32,10 @@ type AnalyticsData = {
   cancellationRate: number;
   noShowRate: number;
   completionRate: number;
+  // Period-over-period changes (real)
+  revenueChange: number | null;
+  bookingsChange: number | null;
+  avgValueChange: number | null;
 };
 
 function AnalyticsContent() {
@@ -153,8 +158,10 @@ function AnalyticsContent() {
       const services = servicesData.services || [];
       const reviews = reviewsData.reviews || [];
 
-      // Filter bookings based on time range
+      // Filter bookings based on time range (current + previous period)
       let filteredBookings = bookings;
+      let prevPeriodBookings: any[] = [];
+
       if (timeRange === "today") {
         const today = new Date();
         filteredBookings = bookings.filter((booking: any) => {
@@ -165,15 +172,51 @@ function AnalyticsContent() {
             bookingDate.getDate() === today.getDate()
           );
         });
+        // Previous period = yesterday
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        prevPeriodBookings = bookings.filter((booking: any) => {
+          const bookingDate = new Date(booking.createdAt);
+          return (
+            bookingDate.getFullYear() === yesterday.getFullYear() &&
+            bookingDate.getMonth() === yesterday.getMonth() &&
+            bookingDate.getDate() === yesterday.getDate()
+          );
+        });
       } else {
+        const days = parseInt(timeRange);
         const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - parseInt(timeRange));
+        cutoffDate.setDate(cutoffDate.getDate() - days);
         filteredBookings = bookings.filter((booking: any) =>
           new Date(booking.createdAt) >= cutoffDate
         );
+        // Previous period = same length window before cutoffDate
+        const prevCutoffDate = new Date(cutoffDate);
+        prevCutoffDate.setDate(prevCutoffDate.getDate() - days);
+        prevPeriodBookings = bookings.filter((booking: any) => {
+          const d = new Date(booking.createdAt);
+          return d >= prevCutoffDate && d < cutoffDate;
+        });
       }
 
+      // Compute previous period basic metrics for comparison
+      const prevCompleted = prevPeriodBookings.filter((b: any) => b.status === "completed");
+      const prevRevenue = prevCompleted.reduce((sum: number, b: any) => sum + (b.total || 0), 0);
+      const prevTotalBookings = prevPeriodBookings.length;
+      const prevAvgValue = prevCompleted.length > 0 ? prevRevenue / prevCompleted.length : 0;
+
       const analyticsData = calculateAnalytics(filteredBookings, services, salon, reviews);
+
+      // Compute real percentage changes
+      const pctChange = (curr: number, prev: number): number | null => {
+        if (prev === 0) return curr > 0 ? 100 : null;
+        return ((curr - prev) / prev) * 100;
+      };
+
+      analyticsData.revenueChange = pctChange(analyticsData.totalRevenue, prevRevenue);
+      analyticsData.bookingsChange = pctChange(analyticsData.totalBookings, prevTotalBookings);
+      analyticsData.avgValueChange = pctChange(analyticsData.averageBookingValue, prevAvgValue);
+
       setAnalytics(analyticsData);
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -388,7 +431,10 @@ function AnalyticsContent() {
       peakHours,
       cancellationRate,
       noShowRate,
-      completionRate
+      completionRate,
+      revenueChange: null,
+      bookingsChange: null,
+      avgValueChange: null
     };
   };
 
@@ -433,14 +479,14 @@ function AnalyticsContent() {
               <div className="mb-4">
                 <button
                   onClick={() => window.close()}
-                  className="flex items-center text-[#5C6F68] hover:text-[#4a5a54] font-medium"
+                  className="flex items-center text-[#F48FB1] hover:text-[#EC407A] font-medium"
                 >
                   <FiArrowLeft className="mr-2" /> Zurück zur Admin-Übersicht
                 </button>
               </div>
             )}
             <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
-              <FiBarChart className="mr-3 text-[#5C6F68]" /> 
+              <FiBarChart className="mr-3 text-[#F48FB1]" /> 
               {viewingSalonUid && isSystemAdmin ? "System-Analytics" : "Analyse-Dashboard"}
             </h1>
             <p className="text-gray-600">
@@ -458,7 +504,7 @@ function AnalyticsContent() {
                 <select
                   value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent"
+                  className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent"
                   style={{ color: "#000" }}
                 >
                   <option value="today">Heute</option>
@@ -478,28 +524,28 @@ function AnalyticsContent() {
                 <MetricCard
                   title="Gesamteinnahmen"
                   value={`€${analytics.totalRevenue.toFixed(2)}`}
-                  icon={<FaEuroSign size={24} color="#F5F5DC" />} // euro icon
-                  trend="up"
-                  change="+12%"
+                  icon={<FaEuroSign size={24} color="#F5F5DC" />}
+                  trend={analytics.revenueChange !== null ? (analytics.revenueChange >= 0 ? "up" : "down") : undefined}
+                  change={analytics.revenueChange !== null ? `${analytics.revenueChange >= 0 ? "+" : ""}${analytics.revenueChange.toFixed(1)}%` : undefined}
                 />
                 <MetricCard
                   title="Gesamt Bestellungen"
                   value={analytics.totalBookings.toString()}
-                  icon={<FiCalendar size={24} color="#F5F5DC" />} // calendar icon
-                  trend="up"
-                  change="+8%"
+                  icon={<FiCalendar size={24} color="#F5F5DC" />}
+                  trend={analytics.bookingsChange !== null ? (analytics.bookingsChange >= 0 ? "up" : "down") : undefined}
+                  change={analytics.bookingsChange !== null ? `${analytics.bookingsChange >= 0 ? "+" : ""}${analytics.bookingsChange.toFixed(1)}%` : undefined}
                 />
                 <MetricCard
                   title="Durchschn. Bestellwert"
                   value={`€${analytics.averageBookingValue.toFixed(2)}`}
-                  icon={<FiTrendingUp size={24} color="#F5F5DC" />} // trending up icon
-                  trend="up"
-                  change="+5%"
+                  icon={<FiTrendingUp size={24} color="#F5F5DC" />}
+                  trend={analytics.avgValueChange !== null ? (analytics.avgValueChange >= 0 ? "up" : "down") : undefined}
+                  change={analytics.avgValueChange !== null ? `${analytics.avgValueChange >= 0 ? "+" : ""}${analytics.avgValueChange.toFixed(1)}%` : undefined}
                 />
                 <MetricCard
                   title="Käuferbindung"
                   value={`${analytics.customerRetentionRate.toFixed(1)}%`}
-                  icon={<FiUserCheck size={24} color="#F5F5DC" />} // user check icon
+                  icon={<FiUserCheck size={24} color="#F5F5DC" />}
                   trend="neutral"
                 />
               </div>
@@ -530,13 +576,13 @@ function AnalyticsContent() {
                 {/* Popular Services */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiScissors className="mr-2 text-[#5C6F68]" /> Beliebteste Produkte
+                    <GiUnderwear className="mr-2 text-[#F48FB1]" /> Beliebteste Produkte
                   </h2>
                   <div className="space-y-4">
                     {analytics.popularServices.slice(0, 5).map((service, index) => (
                       <div key={service.name} className="flex items-center justify-between">
                         <div className="flex items-center">
-                          <span className="w-8 h-8 bg-[#5C6F68] text-white rounded-full flex items-center justify-center text-sm font-medium mr-3">
+                          <span className="w-8 h-8 bg-[#F48FB1] text-white rounded-full flex items-center justify-center text-sm font-medium mr-3">
                             {index + 1}
                           </span>
                           <div>
@@ -544,7 +590,7 @@ function AnalyticsContent() {
                             <p className="text-sm text-gray-500">{service.count} Bestellungen</p>
                           </div>
                         </div>
-                        <span className="font-semibold text-[#5C6F68]">€{service.revenue}</span>
+                        <span className="font-semibold text-[#F48FB1]">€{service.revenue}</span>
                       </div>
                     ))}
                   </div>
@@ -553,13 +599,13 @@ function AnalyticsContent() {
                 {/* Employee Performance */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiUsers className="mr-2 text-[#5C6F68]" /> Top Käufer
+                    <FiUsers className="mr-2 text-[#F48FB1]" /> Top Käufer
                   </h2>
                   <div className="space-y-4">
                     {analytics.employeePerformance.map((employee, index) => (
                       <div key={employee.name} className="flex items-center justify-between">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 bg-[#9DBE8D] text-white rounded-full flex items-center justify-center text-sm font-medium mr-3">
+                          <div className="w-10 h-10 bg-[#F48FB1] text-white rounded-full flex items-center justify-center text-sm font-medium mr-3">
                             {employee.name.charAt(0)}
                           </div>
                           <div>
@@ -567,7 +613,7 @@ function AnalyticsContent() {
                             <p className="text-sm text-gray-500">{employee.bookings} Bestellungen • ⭐ {employee.rating.toFixed(1)}</p>
                           </div>
                         </div>
-                        <span className="font-semibold text-[#5C6F68]">€{employee.revenue}</span>
+                        <span className="font-semibold text-[#F48FB1]">€{employee.revenue}</span>
                       </div>
                     ))}
                   </div>
@@ -578,7 +624,7 @@ function AnalyticsContent() {
                 {/* Time Slot Demand */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiClock className="mr-2 text-[#5C6F68]" /> Bestellzeitpunkte
+                    <FiClock className="mr-2 text-[#F48FB1]" /> Bestellzeitpunkte
                   </h2>
                   <div className="space-y-3">
                     {analytics.timeSlotDemand.slice(0, 8).map((slot) => (
@@ -587,7 +633,7 @@ function AnalyticsContent() {
                         <div className="flex items-center">
                           <div className="w-32 bg-gray-200 rounded-full h-2 mr-3">
                             <div 
-                              className="bg-[#5C6F68] h-2 rounded-full" 
+                              className="bg-[#F48FB1] h-2 rounded-full" 
                               style={{ 
                                 width: `${Math.min((slot.bookings / Math.max(...analytics.timeSlotDemand.map(s => s.bookings))) * 100, 100)}%` 
                               }}
@@ -603,11 +649,11 @@ function AnalyticsContent() {
                 {/* Service Type Breakdown */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiPieChart className="mr-2 text-[#5C6F68]" /> Produkt-Kategorien
+                    <FiPieChart className="mr-2 text-[#F48FB1]" /> Produkt-Kategorien
                   </h2>
                   <div className="space-y-4">
                     {analytics.serviceTypeBreakdown.map((type, index) => {
-                      const colors = ['#5C6F68', '#9DBE8D', '#E4DED5', '#4CAF50', '#FF9800'];
+                      const colors = ['#F48FB1', '#F48FB1', '#E4DED5', '#4CAF50', '#FF9800'];
                       const color = colors[index % colors.length];
                       return (
                         <div key={type.type} className="flex items-center justify-between">
@@ -621,7 +667,7 @@ function AnalyticsContent() {
                               <p className="text-sm text-gray-500">{type.count} Produkte</p>
                             </div>
                           </div>
-                          <span className="font-semibold text-[#5C6F68]">€{type.revenue}</span>
+                          <span className="font-semibold text-[#F48FB1]">€{type.revenue}</span>
                         </div>
                       );
                     })}
@@ -633,7 +679,7 @@ function AnalyticsContent() {
                 {/* Weekly Trends */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiActivity className="mr-2 text-[#5C6F68]" /> Wöchentliche Muster
+                    <FiActivity className="mr-2 text-[#F48FB1]" /> Wöchentliche Muster
                   </h2>
                   <div className="space-y-3">
                     {analytics.weeklyTrends.map((day) => (
@@ -642,7 +688,7 @@ function AnalyticsContent() {
                         <div className="flex items-center flex-1 mx-4">
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
-                              className="bg-[#9DBE8D] h-2 rounded-full" 
+                              className="bg-[#F48FB1] h-2 rounded-full" 
                               style={{ 
                                 width: `${Math.min((day.bookings / Math.max(...analytics.weeklyTrends.map(d => d.bookings))) * 100, 100)}%` 
                               }}
@@ -661,17 +707,17 @@ function AnalyticsContent() {
                 {/* Customer Insights */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <FiUserCheck className="mr-2 text-[#5C6F68]" /> Käufer-Insights
+                    <FiUserCheck className="mr-2 text-[#F48FB1]" /> Käufer-Insights
                   </h2>
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-500">Neue Käufer</p>
-                        <p className="text-2xl font-bold text-[#5C6F68]">{analytics.customerInsights.newCustomers}</p>
+                        <p className="text-2xl font-bold text-[#F48FB1]">{analytics.customerInsights.newCustomers}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-gray-500">Wiederkehrende Käufer</p>
-                        <p className="text-2xl font-bold text-[#9DBE8D]">{analytics.customerInsights.returningCustomers}</p>
+                        <p className="text-2xl font-bold text-[#F48FB1]">{analytics.customerInsights.returningCustomers}</p>
                       </div>
                     </div>
                     <div className="border-t pt-4">
@@ -689,7 +735,7 @@ function AnalyticsContent() {
               {/* Peak Hours Chart */}
               <div className="hidden lg:block bg-white p-6 rounded-lg shadow-sm">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                  <FiClock className="mr-2 text-[#5C6F68]" /> Bestell-Spitzenzeiten
+                  <FiClock className="mr-2 text-[#F48FB1]" /> Bestell-Spitzenzeiten
                 </h2>
                 <div className="grid grid-cols-12 gap-2">
                   {Array.from({ length: 12 }, (_, i) => {
@@ -703,7 +749,7 @@ function AnalyticsContent() {
                       <div key={hour} className="text-center">
                         <div className="h-32 flex items-end justify-center mb-2">
                           <div 
-                            className="w-8 bg-[#5C6F68] rounded-t"
+                            className="w-8 bg-[#F48FB1] rounded-t"
                             style={{ height: `${height}%`, minHeight: bookings > 0 ? '8px' : '0' }}
                             title={`${hour}:00 - ${bookings} Bestellungen`}
                           ></div>
@@ -757,7 +803,7 @@ const MetricCard = ({
           <p className="text-sm font-medium text-gray-500">{title}</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
         </div>
-        <div className="p-3 rounded-full bg-[#5C6F68] bg-opacity-10 text-[#5C6F68]">
+        <div className="p-3 rounded-full bg-[#F48FB1] bg-opacity-10 text-[#F48FB1]">
           {icon}
         </div>
       </div>
@@ -776,8 +822,8 @@ const MetricCard = ({
 const LoadingScreen = () => (
   <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
     <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5C6F68] mx-auto mb-4"></div>
-      <p className="text-[#5C6F68] text-lg">Analysen werden geladen...</p>
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#F48FB1] mx-auto mb-4"></div>
+      <p className="text-[#F48FB1] text-lg">Analysen werden geladen...</p>
     </div>
   </main>
 );
@@ -787,7 +833,7 @@ const AuthPrompt = () => (
     <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">
       <h2 className="text-xl font-semibold text-gray-900 mb-2">Zugriff eingeschränkt</h2>
       <p className="text-gray-600 mb-4">Bitte melde dich an, um das Analyse-Dashboard zu sehen</p>
-      <button className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-medium py-2 px-4 rounded-md">
+      <button className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-medium py-2 px-4 rounded-md">
         Anmelden
       </button>
     </div>
@@ -807,7 +853,7 @@ const PlanUpgradeModal = ({ plan, plans }: { plan?: string; plans: any[] }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto">
       <div className="absolute inset-0 backdrop-blur-sm transition-all duration-300" />
-      <div className="relative text-center p-6 bg-white rounded-lg shadow-lg max-w-md mx-4 border-2 border-[#5C6F68]">
+      <div className="relative text-center p-6 bg-white rounded-lg shadow-lg max-w-md mx-4 border-2 border-[#F48FB1]">
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Analytics nur für Premium-Pläne</h2>
         <p className="text-gray-600 mb-4">
           Die Analyse- und Statistikfunktionen sind nur für bestimmte Pläne verfügbar.<br />
@@ -818,7 +864,7 @@ const PlanUpgradeModal = ({ plan, plans }: { plan?: string; plans: any[] }) => {
         </p>
         <a
           href="/admin/plans"
-          className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-medium py-2 px-4 rounded-md inline-block mr-2"
+          className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-medium py-2 px-4 rounded-md inline-block mr-2"
         >
           Plan upgraden
         </a>
@@ -845,8 +891,8 @@ function AnalyticsPage() {
     <Suspense fallback={
       <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5C6F68] mx-auto mb-4"></div>
-          <p className="text-[#5C6F68] text-lg">Analysen werden geladen...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#F48FB1] mx-auto mb-4"></div>
+          <p className="text-[#F48FB1] text-lg">Analysen werden geladen...</p>
         </div>
       </main>
     }>

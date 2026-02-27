@@ -7,11 +7,19 @@ import ChatWidget from "../../components/ChatWidget";
 import { FiShoppingBag, FiMapPin, FiStar, FiLock, FiMessageSquare, FiSend, FiAlertTriangle } from "react-icons/fi";
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
 };
+
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 type PurchaseRequest = {
   _id: string;
@@ -28,12 +36,16 @@ type PurchaseRequest = {
     name: string;
     price: number;
     imageUrl?: string;
+    selectedAdditionalServices?: string[];
+    additionalServices?: { name: string; price: number }[];
   }[];
   items?: {
     id: string;
     name: string;
     price: number;
     imageUrl?: string;
+    selectedAdditionalServices?: string[];
+    additionalServices?: { name: string; price: number }[];
   }[];
   total: number;
   specialNeeds?: string;
@@ -76,7 +88,13 @@ export default function BuyerTrackingPage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const router = useRouter();
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   // Chat state
   const [chatBookingId, setChatBookingId] = useState<string | null>(null);
@@ -91,6 +109,9 @@ export default function BuyerTrackingPage() {
   const [ticketDescription, setTicketDescription] = useState("");
   const [ticketBookingId, setTicketBookingId] = useState<string | null>(null);
   const [ticketSubmitting, setTicketSubmitting] = useState(false);
+  const [myTickets, setMyTickets] = useState<any[]>([]);
+  const [showMyTickets, setShowMyTickets] = useState(false);
+  const [ticketDetailId, setTicketDetailId] = useState<string | null>(null);
 
   // Check auth and fetch orders
   useEffect(() => {
@@ -102,6 +123,8 @@ export default function BuyerTrackingPage() {
           setUser(data);
           // Fetch orders by buyerUid
           await fetchRequests(data.uid);
+          // Fetch user's tickets
+          fetchMyTickets(data.uid);
         } else {
           setUser(null);
         }
@@ -158,7 +181,15 @@ export default function BuyerTrackingPage() {
       const sellerUid = reviewingRequest.sellerUid || reviewingRequest.salonUid;
       const items = reviewingRequest.items || reviewingRequest.services || [];
       const firstItem = items[0];
+      const buyerEmail = reviewingRequest.buyerEmail || user.email || user.username || '';
+      const itemName = firstItem?.name || items.map(i => i.name).filter(Boolean).join(', ') || 'Bestellung';
       
+      if (!sellerUid || !buyerEmail) {
+        showToast('Fehlende Daten: Verkäufer oder E-Mail nicht verfügbar.', 'error');
+        setSubmittingReview(false);
+        return;
+      }
+
       const res = await fetch('/api/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -166,11 +197,13 @@ export default function BuyerTrackingPage() {
           salonUid: sellerUid,
           sellerUid: sellerUid,
           buyerUid: user.uid,
-          buyerEmail: user.email || '',
-          customerName: reviewingRequest.buyerName || reviewingRequest.customerName || user.name,
+          buyerEmail: buyerEmail,
+          buyerName: reviewingRequest.buyerName || reviewingRequest.customerName || user.name || user.username,
+          customerName: reviewingRequest.buyerName || reviewingRequest.customerName || user.name || user.username,
           rating: reviewRating,
           comment: reviewComment,
-          serviceName: firstItem?.name || '',
+          serviceName: itemName,
+          itemName: itemName,
           bookingId: reviewingRequest._id,
           requestId: reviewingRequest._id
         })
@@ -180,14 +213,14 @@ export default function BuyerTrackingPage() {
         setReviewingRequest(null);
         setReviewRating(5);
         setReviewComment('');
-        alert('Bewertung erfolgreich abgegeben!');
+        showToast('Bewertung erfolgreich abgegeben!', 'success');
       } else {
         const data = await res.json();
-        alert(data.error || 'Fehler beim Senden der Bewertung');
+        showToast(data.error || 'Fehler beim Senden der Bewertung', 'error');
       }
     } catch (error) {
       console.error('Error submitting review:', error);
-      alert('Fehler beim Senden der Bewertung');
+      showToast('Fehler beim Senden der Bewertung', 'error');
     } finally {
       setSubmittingReview(false);
     }
@@ -261,11 +294,13 @@ export default function BuyerTrackingPage() {
         setTicketSubject("");
         setTicketDescription("");
         setTicketBookingId(null);
-        alert('Ticket wurde erfolgreich erstellt!');
+        showToast('Ticket wurde erfolgreich erstellt!', 'success');
+        // Refresh tickets list
+        if (user?.uid) fetchMyTickets(user.uid);
       }
     } catch (error) {
       console.error('Error creating ticket:', error);
-      alert('Fehler beim Erstellen des Tickets');
+      showToast('Fehler beim Erstellen des Tickets', 'error');
     } finally {
       setTicketSubmitting(false);
     }
@@ -288,14 +323,46 @@ export default function BuyerTrackingPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return '#f59e0b';
-      case 'accepted': return '#9DBE8D';
+      case 'accepted': return '#F48FB1';
       case 'payment_pending': return '#3b82f6';
       case 'shipped': return '#8b5cf6';
       case 'completed': return '#22c55e';
       case 'rejected': return '#ef4444';
       case 'cancelled': return '#6b7280';
-      case 'confirmed': return '#9DBE8D';
+      case 'confirmed': return '#F48FB1';
       default: return '#6b7280';
+    }
+  };
+
+  const getTicketStatusLabel = (status: string) => {
+    switch (status) {
+      case 'open': return 'Offen';
+      case 'in_progress': return 'In Bearbeitung';
+      case 'resolved': return 'Gel\u00f6st';
+      case 'closed': return 'Geschlossen';
+      default: return status;
+    }
+  };
+
+  const getTicketStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return '#f59e0b';
+      case 'in_progress': return '#3b82f6';
+      case 'resolved': return '#22c55e';
+      case 'closed': return '#6b7280';
+      default: return '#6b7280';
+    }
+  };
+
+  const fetchMyTickets = async (uid: string) => {
+    try {
+      const res = await fetch(`/api/tickets?raisedByUid=${encodeURIComponent(uid)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMyTickets(data.tickets || []);
+      }
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
     }
   };
 
@@ -311,7 +378,7 @@ export default function BuyerTrackingPage() {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-[#5C6F68] rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-[#F48FB1] rounded-full animate-spin"></div>
           <p className="text-gray-600 text-sm">Laden...</p>
         </div>
       </main>
@@ -324,13 +391,13 @@ export default function BuyerTrackingPage() {
       <main className="min-h-screen bg-gray-50">
         <Navbar user={undefined} onLogout={() => {}} />
         <div className="max-w-4xl mx-auto py-16 px-4 text-center">
-          <FiLock className="w-16 h-16 text-[#5C6F68] mx-auto mb-4" />
+          <FiLock className="w-16 h-16 text-[#F48FB1] mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Anmeldung erforderlich</h2>
           <p className="text-gray-600 mb-6">Melde dich an, um deine Bestellungen zu sehen.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a
               href="/login"
-              className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold py-3 px-6 rounded-lg transition inline-block"
+              className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-semibold py-3 px-6 rounded-lg transition inline-block"
               style={{ textDecoration: "none" }}
             >
               Zum Login
@@ -355,7 +422,7 @@ export default function BuyerTrackingPage() {
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 flex items-center">
-            <FiShoppingBag className="mr-2 text-[#5C6F68]" /> Meine Anfragen
+            <FiShoppingBag className="mr-2 text-[#F48FB1]" /> Meine Anfragen
           </h1>
           <p className="text-gray-600">Verfolge den Status deiner Kaufanfragen, <strong>{user.name || user.username}</strong></p>
         </div>
@@ -368,7 +435,7 @@ export default function BuyerTrackingPage() {
             <p className="text-gray-600 mb-6">Du hast noch keine Kaufanfragen gesendet.</p>
             <a
               href="/salons"
-              className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-medium py-2 px-4 rounded-lg transition inline-block"
+              className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-medium py-2 px-4 rounded-lg transition inline-block"
               style={{ textDecoration: "none" }}
             >
               Marktplatz entdecken
@@ -389,7 +456,12 @@ export default function BuyerTrackingPage() {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        {salon?.name || 'Verkäufer'}
+                        <a
+                          href={`/salon/${slugify(salon?.name || '')}`}
+                          className="hover:underline hover:text-[#F48FB1] transition-colors"
+                        >
+                          {salon?.name || 'Verkäufer'}
+                        </a>
                       </h3>
                       {salon?.location && (
                         <div className="flex items-center text-gray-600 text-sm mb-1">
@@ -403,33 +475,56 @@ export default function BuyerTrackingPage() {
                         })}
                       </div>
                     </div>
-                    <span
-                      className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
-                      style={{ backgroundColor: getStatusColor(request.status) }}
-                    >
-                      {getStatusLabel(request.status)}
-                    </span>
                   </div>
 
                   {/* Items with images */}
                   <div className="border-t border-gray-200 pt-4">
                     <h4 className="font-medium text-gray-900 mb-2">Produkte:</h4>
                     <div className="space-y-2">
-                      {items.map((item: any, index: number) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {item.imageUrl && (
-                              <img src={item.imageUrl} alt={item.name} className="w-10 h-10 rounded object-cover border border-gray-200" />
-                            )}
-                            <span className="text-gray-700 text-sm">{item.name}</span>
+                      {items.map((item: any, index: number) => {
+                        const addons = item.selectedAdditionalServices || [];
+                        const addonServices = item.additionalServices || [];
+                        const addonsTotal = addons.reduce((sum: number, name: string) => {
+                          const a = addonServices.find((x: any) => x.name === name);
+                          return sum + (a?.price || 0);
+                        }, 0);
+                        const basePrice = item.price - addonsTotal;
+                        return (
+                        <div key={index}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {item.imageUrl && (
+                                <img src={item.imageUrl} alt={item.name} className="w-10 h-10 rounded object-cover border border-gray-200" />
+                              )}
+                              <div className="flex flex-col">
+                                <span className="text-gray-700 text-sm">{item.name}</span>
+                                {item.selectedWearDays && (
+                                  <span className="text-xs text-[#F48FB1]">{item.selectedWearDays} {item.selectedWearDays === 1 ? 'Tag' : 'Tage'} getragen</span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="font-medium text-gray-900 text-sm">€{addons.length > 0 ? basePrice : item.price}</span>
                           </div>
-                          <span className="font-medium text-gray-900 text-sm">€{item.price}</span>
+                          {addons.length > 0 && (
+                            <div className="ml-[3.25rem] mt-1 space-y-0.5">
+                              {addons.map((addonName: string, idx: number) => {
+                                const addon = addonServices.find((a: any) => a.name === addonName);
+                                return (
+                                  <div key={idx} className="flex items-center justify-between text-xs text-gray-500">
+                                    <span>+ {addonName}</span>
+                                    {addon && <span className="text-green-700 font-medium">+€{addon.price}</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <div className="border-t border-gray-200 mt-3 pt-3 flex justify-between items-center">
                       <span className="font-medium text-gray-900">Gesamt:</span>
-                      <span className="text-lg font-bold text-[#5C6F68]">€{request.total}</span>
+                      <span className="text-lg font-bold text-[#F48FB1]">€{request.total}</span>
                     </div>
                   </div>
 
@@ -470,9 +565,9 @@ export default function BuyerTrackingPage() {
                         const isRejected = ['rejected', 'cancelled'].includes(request.status);
                         return (
                           <React.Fragment key={s}>
-                            {i > 0 && <div className={`flex-1 h-0.5 ${isActive ? 'bg-[#9DBE8D]' : isRejected ? 'bg-red-200' : 'bg-gray-200'}`} />}
+                            {i > 0 && <div className={`flex-1 h-0.5 ${isActive ? 'bg-[#F48FB1]' : isRejected ? 'bg-red-200' : 'bg-gray-200'}`} />}
                             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                              isActive ? 'bg-[#9DBE8D] text-white' : 
+                              isActive ? 'bg-[#F48FB1] text-white' : 
                               isRejected ? 'bg-red-200 text-red-600' : 
                               'bg-gray-200 text-gray-500'
                             }`}>
@@ -495,7 +590,7 @@ export default function BuyerTrackingPage() {
                     <div className="mt-3">
                       <button
                         onClick={() => setReviewingRequest(request)}
-                        className="text-[#5C6F68] hover:text-[#4a5a54] font-medium text-sm flex items-center gap-1"
+                        className="text-[#F48FB1] hover:text-[#EC407A] font-medium text-sm flex items-center gap-1"
                       >
                         <FiStar className="w-4 h-4" /> Bewertung schreiben
                       </button>
@@ -510,13 +605,85 @@ export default function BuyerTrackingPage() {
                     >
                       <FiMessageSquare className="w-4 h-4" /> Nachricht an Verkäufer
                     </button>
-                    <button
-                      onClick={() => { setShowTicketForm(true); setTicketBookingId(request._id); }}
-                      className="flex items-center gap-1 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition"
-                    >
-                      <FiAlertTriangle className="w-4 h-4" /> Problem melden
-                    </button>
+                    {(() => {
+                      const existingTicket = myTickets.find((t: any) => t.bookingId === request._id);
+                      if (existingTicket) {
+                        return (
+                          <button
+                            onClick={() => setTicketDetailId(ticketDetailId === request._id ? null : request._id)}
+                            className="flex items-center gap-1 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition"
+                          >
+                            <FiAlertTriangle className="w-4 h-4" />
+                            <span
+                              className="inline-block w-2 h-2 rounded-full"
+                              style={{ background: getTicketStatusColor(existingTicket.status) }}
+                            />
+                            Ticket Status
+                          </button>
+                        );
+                      }
+                      return (
+                        <button
+                          onClick={() => { setShowTicketForm(true); setTicketBookingId(request._id); }}
+                          className="flex items-center gap-1 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition"
+                        >
+                          <FiAlertTriangle className="w-4 h-4" /> Problem melden
+                        </button>
+                      );
+                    })()}
                   </div>
+                  {/* Ticket status detail */}
+                  {(() => {
+                    const existingTicket = myTickets.find((t: any) => t.bookingId === request._id);
+                    if (ticketDetailId === request._id && existingTicket) {
+                      return (
+                        <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="font-semibold text-gray-900 text-sm">{existingTicket.subject}</h4>
+                            <span
+                              className="text-xs font-medium px-2 py-0.5 rounded-full text-white"
+                              style={{ background: getTicketStatusColor(existingTicket.status) }}
+                            >
+                              {getTicketStatusLabel(existingTicket.status)}
+                            </span>
+                          </div>
+                          <p className="text-gray-600 text-sm mb-2">{existingTicket.description}</p>
+                          <p className="text-gray-400 text-xs mb-2">
+                            Erstellt: {new Date(existingTicket.createdAt).toLocaleDateString('de-DE')} · {new Date(existingTicket.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {existingTicket.adminNotes && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-2">
+                              <p className="text-xs font-medium text-blue-700 mb-1">Admin-Antwort:</p>
+                              <p className="text-sm text-blue-900">{existingTicket.adminNotes}</p>
+                            </div>
+                          )}
+                          {existingTicket.messages && existingTicket.messages.length > 0 && (
+                            <div className="space-y-2 mt-2">
+                              {existingTicket.messages.map((msg: any, idx: number) => (
+                                <div
+                                  key={idx}
+                                  className={`rounded-md p-2 text-sm ${
+                                    msg.senderRole === 'admin'
+                                      ? 'bg-blue-50 border border-blue-200 text-blue-900'
+                                      : 'bg-white border border-gray-200 text-gray-800'
+                                  }`}
+                                >
+                                  <span className="font-medium text-xs">
+                                    {msg.senderRole === 'admin' ? 'Admin' : msg.senderName}:
+                                  </span>{' '}
+                                  {msg.text}
+                                  <span className="text-xs text-gray-400 ml-2">
+                                    {new Date(msg.createdAt).toLocaleDateString('de-DE')}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               );
             })}
@@ -540,7 +707,7 @@ export default function BuyerTrackingPage() {
                         className="focus:outline-none"
                       >
                         <FiStar 
-                          className={`w-8 h-8 ${star <= reviewRating ? 'text-[#9DBE8D] fill-current' : 'text-gray-300'}`} 
+                          className={`w-8 h-8 ${star <= reviewRating ? 'text-[#F48FB1] fill-current' : 'text-gray-300'}`} 
                         />
                       </button>
                     ))}
@@ -551,7 +718,7 @@ export default function BuyerTrackingPage() {
                   <textarea
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
-                    className="w-full p-3 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F]"
+                    className="w-full p-3 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent text-[#1F1F1F]"
                     rows={4}
                     placeholder="Teile deine Erfahrung..."
                     required
@@ -561,7 +728,7 @@ export default function BuyerTrackingPage() {
                   <button
                     onClick={submitReview}
                     disabled={submittingReview || !reviewComment.trim()}
-                    className="flex-1 bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50"
+                    className="flex-1 bg-[#F48FB1] hover:bg-[#EC407A] text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50"
                   >
                     {submittingReview ? 'Wird gesendet...' : 'Bewertung abschicken'}
                   </button>
@@ -607,7 +774,7 @@ export default function BuyerTrackingPage() {
                     type="text"
                     value={ticketSubject}
                     onChange={e => setTicketSubject(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5C6F68]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F48FB1]"
                     placeholder="Kurze Beschreibung des Problems"
                   />
                 </div>
@@ -616,7 +783,7 @@ export default function BuyerTrackingPage() {
                   <textarea
                     value={ticketDescription}
                     onChange={e => setTicketDescription(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5C6F68]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F48FB1]"
                     rows={4}
                     placeholder="Beschreiben Sie das Problem im Detail..."
                   />
@@ -641,6 +808,33 @@ export default function BuyerTrackingPage() {
           </div>
         )}
       </div>
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className="fixed top-6 left-1/2 z-[200]"
+          style={{ transform: 'translateX(-50%)', animation: 'toastSlideIn 0.3s ease-out' }}
+        >
+          <style>{`@keyframes toastSlideIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+          <div className={`flex items-center gap-3 px-6 py-3 rounded-xl shadow-lg border ${
+            toast.type === 'success'
+              ? 'bg-white border-[#F48FB1] text-[#1F1F1F]'
+              : 'bg-white border-red-400 text-[#1F1F1F]'
+          }`}>
+            <span className={`text-lg ${
+              toast.type === 'success' ? 'text-[#F48FB1]' : 'text-red-500'
+            }`}>
+              {toast.type === 'success' ? '✓' : '✕'}
+            </span>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="ml-2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
       <Footer />
       {/* Floating Chat Widget */}
       {user && (

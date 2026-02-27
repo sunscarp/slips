@@ -32,7 +32,7 @@ export default function BookingPage() {
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <h2 className="text-2xl font-bold mb-4">Keine Produkte ausgewählt</h2>
           <button
-            className="bg-[#5C6F68] text-white px-6 py-3 rounded-lg font-semibold"
+            className="bg-[#F48FB1] text-white px-6 py-3 rounded-lg font-semibold"
             onClick={() => router.push("/salons")}
           >
             Zum Marktplatz
@@ -52,7 +52,7 @@ export default function BookingPage() {
             {services.map(s => (
               <li key={s._id} className="flex justify-between items-center py-2 border-b border-[#E4DED5]">
                 <span className="font-medium">{s.name}</span>
-                <span className="text-[#5C6F68] font-semibold">€{s.price}</span>
+                <span className="text-[#F48FB1] font-semibold">€{s.price}</span>
               </li>
             ))}
           </ul>
@@ -62,7 +62,7 @@ export default function BookingPage() {
           </div>
         </div>
         <button
-          className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold py-3 px-8 rounded-lg w-full"
+          className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-semibold py-3 px-8 rounded-lg w-full"
           onClick={() => alert("Bestellung bestätigt!")}
         >
           Bestellung bestätigen

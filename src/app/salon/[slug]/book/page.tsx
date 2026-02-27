@@ -25,6 +25,16 @@ type Service = {
   price?: number;
   duration?: number;
   selectedOption?: { duration: number; price: number };
+  selectedAdditionalServices?: string[];
+  additionalServices?: { name: string; price: number }[];
+  wearDurationEnabled?: boolean;
+  minWearDays?: number;
+  maxWearDays?: number;
+  pricePerDay?: number;
+  basePrice?: number;
+  extraPricePerDay?: number;
+  selectedWearDays?: number;
+  requiresAddress?: boolean;
 };
 
 type User = {
@@ -49,6 +59,7 @@ export default function PurchaseRequestPage() {
 
   // Buyer form fields
   const [buyerName, setBuyerName] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
   const [specialNeeds, setSpecialNeeds] = useState('');
   // Shipping address
   const [street, setStreet] = useState('');
@@ -66,6 +77,7 @@ export default function PurchaseRequestPage() {
           const data = await res.json();
           setUser(data);
           setBuyerName(data.name || data.username || '');
+          setBuyerEmail(data.email || '');
         } else {
           setUser(null);
         }
@@ -135,7 +147,11 @@ export default function PurchaseRequestPage() {
 
   const total = services.reduce((sum, s) => sum + (s.price || 0), 0);
 
-  const isFormValid = buyerName.trim() !== '' && street.trim() !== '' && zip.trim() !== '' && city.trim() !== '' && user !== null;
+  // If ANY cart item requires an address, show the address form
+  const needsAddress = services.some(s => s.requiresAddress !== false);
+
+  const isFormValid = buyerName.trim() !== '' && buyerEmail.trim() !== '' && user !== null &&
+    (!needsAddress || (street.trim() !== '' && zip.trim() !== '' && city.trim() !== ''));
 
   async function submitPurchaseRequest() {
     if (!salon || !services.length || !isFormValid || !user) return;
@@ -152,26 +168,36 @@ export default function PurchaseRequestPage() {
           name: s.name,
           price: s.price || 0,
           imageUrl: s.imageUrl || '',
-          selectedOption: s.selectedOption
+          selectedOption: s.selectedOption,
+          selectedAdditionalServices: s.selectedAdditionalServices || [],
+          selectedWearDays: s.selectedWearDays,
+          wearDurationEnabled: s.wearDurationEnabled,
+          basePrice: s.basePrice,
+          extraPricePerDay: s.extraPricePerDay,
         })),
         items: services.map(s => ({
           id: s._id,
           name: s.name,
           price: s.price || 0,
           imageUrl: s.imageUrl || '',
-          selectedOption: s.selectedOption
+          selectedOption: s.selectedOption,
+          selectedAdditionalServices: s.selectedAdditionalServices || [],
+          selectedWearDays: s.selectedWearDays,
+          wearDurationEnabled: s.wearDurationEnabled,
+          basePrice: s.basePrice,
+          extraPricePerDay: s.extraPricePerDay,
         })),
         buyerName,
         customerName: buyerName,
         buyerUid: user.uid,
-        buyerEmail: user.email || `${user.username}@buyer.local`,
-        shippingAddress: {
+        buyerEmail: buyerEmail.trim(),
+        shippingAddress: needsAddress ? {
           street: street.trim(),
           number: houseNumber.trim(),
           zip: zip.trim(),
           city: city.trim(),
           country: country.trim(),
-        },
+        } : null,
         specialNeeds,
         total,
         status: 'pending'
@@ -207,7 +233,7 @@ export default function PurchaseRequestPage() {
     return (
       <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FAFAFA' }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-[#5C6F68] rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-[#F48FB1] rounded-full animate-spin"></div>
           <p className="text-gray-600 text-sm">Laden...</p>
         </div>
       </main>
@@ -219,12 +245,12 @@ export default function PurchaseRequestPage() {
     return (
       <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FAFAFA' }}>
         <div className="text-center max-w-md px-4">
-          <FiLock className="w-12 h-12 text-[#5C6F68] mx-auto mb-4" />
+          <FiLock className="w-12 h-12 text-[#F48FB1] mx-auto mb-4" />
           <h2 className="text-xl font-medium mb-2 text-gray-900">Anmeldung erforderlich</h2>
           <p className="text-gray-600 mb-6">Du musst angemeldet sein, um eine Kaufanfrage zu senden.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
-              className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white px-6 py-3 text-sm font-medium transition-colors rounded-lg"
+              className="bg-[#F48FB1] hover:bg-[#EC407A] text-white px-6 py-3 text-sm font-medium transition-colors rounded-lg"
               onClick={() => {
                 if (typeof window !== 'undefined') {
                   localStorage.setItem('bookme_redirect_after_login', window.location.pathname);
@@ -259,7 +285,7 @@ export default function PurchaseRequestPage() {
           <h2 className="text-xl font-medium mb-4 text-gray-900">Keine Produkte ausgewählt</h2>
           <p className="text-gray-600 mb-6">Bitte wähle zuerst Produkte aus, bevor du eine Anfrage sendest.</p>
           <button
-            className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white px-6 py-3 text-sm font-medium transition-colors rounded-lg"
+            className="bg-[#F48FB1] hover:bg-[#EC407A] text-white px-6 py-3 text-sm font-medium transition-colors rounded-lg"
             onClick={() => router.push("/salons")}
           >
             Zum Marktplatz
@@ -273,11 +299,11 @@ export default function PurchaseRequestPage() {
     <main className="min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b border-[#E4DED5] sticky top-0 z-20">
-        <div className="max-w-4xl mx-auto px-4 lg:px-8">
+        <div className="max-w-5xl mx-auto px-4 lg:px-8">
           <div className="flex items-center h-16">
             <button 
               onClick={() => router.back()}
-              className="flex items-center text-[#5C6F68] hover:text-[#4a5a54] transition-colors"
+              className="flex items-center text-[#F48FB1] hover:text-[#EC407A] transition-colors"
             >
               <FiArrowLeft className="mr-2" />
               Zurück
@@ -286,7 +312,7 @@ export default function PurchaseRequestPage() {
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto py-8 sm:py-12 px-4 lg:px-8">
+      <div className="max-w-5xl mx-auto py-8 sm:py-12 px-4 lg:px-8">
         {step === 'form' && (
           <>
             {/* Header */}
@@ -308,7 +334,8 @@ export default function PurchaseRequestPage() {
                   <h2 className="text-lg font-semibold text-[#1F1F1F] mb-4">Ausgewählte Produkte</h2>
                   <div className="space-y-3">
                     {services.map(service => (
-                      <div key={service._id} className="flex items-center justify-between py-3 border-b border-[#E4DED5] last:border-0">
+                      <div key={service._id} className="py-3 border-b border-[#E4DED5] last:border-0">
+                        <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {service.imageUrl && (
                             <img
@@ -319,11 +346,20 @@ export default function PurchaseRequestPage() {
                           )}
                           <div className="min-w-0">
                             <h3 className="font-medium text-[#1F1F1F] text-sm sm:text-base truncate">{service.name}</h3>
-                            {service.selectedOption && (
+                            {service.wearDurationEnabled && service.selectedWearDays ? (
+                              <div className="text-xs sm:text-sm text-gray-500">
+                                <span>{service.selectedWearDays} {service.selectedWearDays === 1 ? 'Tag' : 'Tage'} getragen</span>
+                                {service.extraPricePerDay && service.basePrice && service.minWearDays && service.selectedWearDays > service.minWearDays && (
+                                  <span className="text-gray-400 ml-1">
+                                    (€{service.basePrice.toFixed(2)} + {service.selectedWearDays - service.minWearDays}×€{service.extraPricePerDay.toFixed(2)})
+                                  </span>
+                                )}
+                              </div>
+                            ) : service.selectedOption ? (
                               <span className="text-xs sm:text-sm text-gray-500">
                                 Variante: {service.selectedOption.duration} Min
                               </span>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-3">
@@ -336,6 +372,22 @@ export default function PurchaseRequestPage() {
                             ×
                           </button>
                         </div>
+                      </div>
+                      {/* Show selected additional services */}
+                      {service.selectedAdditionalServices && service.selectedAdditionalServices.length > 0 && (
+                        <div className="ml-0 sm:ml-[4.25rem] mt-2">
+                          <p className="text-xs text-gray-500 mb-1">Zusätzliche Leistungen:</p>
+                          {service.selectedAdditionalServices.map((addonName: string, idx: number) => {
+                            const addon = service.additionalServices?.find((a: { name: string; price: number }) => a.name === addonName);
+                            return (
+                              <div key={idx} className="flex items-center justify-between text-xs text-gray-600 py-0.5">
+                                <span>+ {addonName}</span>
+                                {addon && <span className="text-green-700 font-medium">+€{addon.price}</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                       </div>
                     ))}
                   </div>
@@ -351,7 +403,7 @@ export default function PurchaseRequestPage() {
                 <div className="bg-white border border-[#E4DED5] rounded-xl p-4 sm:p-6">
                   <h2 className="text-lg font-semibold text-[#1F1F1F] mb-4">Deine Daten</h2>
                   <div className="space-y-4">
-                    <div className="bg-[#E4DED5]/30 rounded-lg p-3 text-sm text-[#5C6F68]">
+                    <div className="bg-[#E4DED5]/30 rounded-lg p-3 text-sm text-[#F48FB1]">
                       Angemeldet als <strong>{user?.name || user?.username}</strong>
                     </div>
                     <div>
@@ -360,13 +412,26 @@ export default function PurchaseRequestPage() {
                         type="text"
                         value={buyerName}
                         onChange={(e) => setBuyerName(e.target.value)}
-                        className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F]"
+                        className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent text-[#1F1F1F]"
                         placeholder="Dein Name"
                         required
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#1F1F1F] mb-1">E-Mail Adresse *</label>
+                      <input
+                        type="email"
+                        value={buyerEmail}
+                        onChange={(e) => setBuyerEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent text-[#1F1F1F]"
+                        placeholder="deine@email.com"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Wir senden Bestellupdates an diese E-Mail-Adresse.</p>
+                    </div>
 
                     {/* Shipping address */}
+                    {needsAddress && (
                     <div className="pt-2 border-t border-[#E4DED5]">
                       <h3 className="text-sm font-semibold text-[#1F1F1F] mb-3">Lieferadresse *</h3>
                       <div className="space-y-3">
@@ -377,7 +442,7 @@ export default function PurchaseRequestPage() {
                               type="text"
                               value={street}
                               onChange={(e) => setStreet(e.target.value)}
-                              className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F] text-sm"
+                              className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent text-[#1F1F1F] text-sm"
                               placeholder="Musterstraße"
                               required
                             />
@@ -388,7 +453,7 @@ export default function PurchaseRequestPage() {
                               type="text"
                               value={houseNumber}
                               onChange={(e) => setHouseNumber(e.target.value)}
-                              className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F] text-sm"
+                              className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent text-[#1F1F1F] text-sm"
                               placeholder="12a"
                             />
                           </div>
@@ -400,7 +465,7 @@ export default function PurchaseRequestPage() {
                               type="text"
                               value={zip}
                               onChange={(e) => setZip(e.target.value)}
-                              className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F] text-sm"
+                              className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent text-[#1F1F1F] text-sm"
                               placeholder="10115"
                               required
                             />
@@ -411,7 +476,7 @@ export default function PurchaseRequestPage() {
                               type="text"
                               value={city}
                               onChange={(e) => setCity(e.target.value)}
-                              className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F] text-sm"
+                              className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent text-[#1F1F1F] text-sm"
                               placeholder="Berlin"
                               required
                             />
@@ -423,19 +488,20 @@ export default function PurchaseRequestPage() {
                             type="text"
                             value={country}
                             onChange={(e) => setCountry(e.target.value)}
-                            className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F] text-sm"
+                            className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent text-[#1F1F1F] text-sm"
                             placeholder="Deutschland"
                           />
                         </div>
                       </div>
                     </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-medium text-[#1F1F1F] mb-1">Besondere Wünsche</label>
                       <textarea
                         value={specialNeeds}
                         onChange={(e) => setSpecialNeeds(e.target.value)}
-                        className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent text-[#1F1F1F]"
+                        className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent text-[#1F1F1F]"
                         rows={3}
                         placeholder="Optionale Nachricht an den Verkäufer..."
                       />
@@ -446,7 +512,7 @@ export default function PurchaseRequestPage() {
                     <button
                       onClick={submitPurchaseRequest}
                       disabled={submitting || !isFormValid}
-                      className="w-full bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 disabled:opacity-50"
+                      className="w-full bg-[#F48FB1] hover:bg-[#EC407A] text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 disabled:opacity-50"
                     >
                       {submitting ? 'Wird gesendet...' : 'Kaufanfrage senden'}
                     </button>
@@ -466,7 +532,7 @@ export default function PurchaseRequestPage() {
             <div className="bg-white border border-[#E4DED5] rounded-xl p-8 sm:p-12">
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
-                style={{ backgroundColor: '#9DBE8D' }}
+                style={{ backgroundColor: '#F48FB1' }}
               >
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -488,22 +554,22 @@ export default function PurchaseRequestPage() {
                 <h3 className="font-semibold text-[#1F1F1F] mb-3">So geht es weiter:</h3>
                 <ol className="space-y-2 text-sm text-gray-600">
                   <li className="flex items-start gap-2">
-                    <span className="bg-[#5C6F68] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">1</span>
+                    <span className="bg-[#F48FB1] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">1</span>
                     Der Verkäufer prüft deine Anfrage
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="bg-[#5C6F68] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">2</span>
+                    <span className="bg-[#F48FB1] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">2</span>
                     Du erhältst die Zahlungsinformationen
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="bg-[#5C6F68] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">3</span>
+                    <span className="bg-[#F48FB1] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">3</span>
                     Nach Zahlungseingang wird deine Bestellung versendet
                   </li>
                 </ol>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
-                  className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white px-6 py-3 font-semibold transition-colors rounded-lg"
+                  className="bg-[#F48FB1] hover:bg-[#EC407A] text-white px-6 py-3 font-semibold transition-colors rounded-lg"
                   onClick={() => router.push('/bookings')}
                 >
                   Meine Anfragen verfolgen

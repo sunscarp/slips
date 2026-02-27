@@ -6,10 +6,10 @@ import ChatWidget from "../../../components/ChatWidget";
 import { FiMessageSquare, FiStar, FiAward, FiUser, FiTrash2 } from "react-icons/fi";
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
   background: "#FAFAFA",
   success: "#4CAF50",
   warning: "#FF9800",
@@ -143,13 +143,14 @@ export default function ReviewsPage() {
   const calculateStats = (reviewsData: Review[]) => {
     const totalReviews = reviewsData.length;
     const averageRating = totalReviews > 0 
-      ? Math.round((reviewsData.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 10) / 10 
+      ? Math.round((reviewsData.reduce((sum, r) => sum + Number(r.rating || 0), 0) / totalReviews) * 10) / 10 
       : 0;
 
     // Rating distribution
     const ratingDistribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     reviewsData.forEach(review => {
-      ratingDistribution[review.rating]++;
+      const r = Number(review.rating);
+      if (ratingDistribution[r] !== undefined) ratingDistribution[r]++;
     });
 
     // Top services
@@ -158,7 +159,7 @@ export default function ReviewsPage() {
       if (!serviceStats[review.serviceName]) {
         serviceStats[review.serviceName] = { total: 0, count: 0 };
       }
-      serviceStats[review.serviceName].total += review.rating;
+      serviceStats[review.serviceName].total += Number(review.rating || 0);
       serviceStats[review.serviceName].count++;
     });
 

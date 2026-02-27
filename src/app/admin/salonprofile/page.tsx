@@ -5,10 +5,10 @@ import Footer from "@/components/footer";
 import ChatWidget from "../../../components/ChatWidget";
 
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
   lightGray: "#F8F9FA",
   border: "#E5E7EB",
   success: "#10B981",
@@ -215,6 +215,16 @@ export default function SalonProfilePage() {
     e.preventDefault();
     setStatus(null);
     if (!salon) return;
+    // Require at least one profile image
+    if (imagePreviews.length === 0 && imageFiles.length === 0) {
+      setStatus("Bitte füge mindestens ein Profilbild hinzu.");
+      return;
+    }
+    // Require contact/email
+    if (!salonContact.trim()) {
+      setStatus("Bitte gib deine Kontaktinformation (E-Mail) an.");
+      return;
+    }
     let imageUrls = imagePreviews.filter(src => src.startsWith("/api/salons/image/"));
     try {
       if (imageFiles.length > 0) {
@@ -380,7 +390,7 @@ export default function SalonProfilePage() {
                     type="text"
                     value={form.height || ''}
                     onChange={e => setForm(f => ({ ...f, height: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] text-[#1F1F1F]"
                     placeholder="z.B. 170"
                   />
                 </div>
@@ -390,7 +400,7 @@ export default function SalonProfilePage() {
                     type="text"
                     value={form.weight || ''}
                     onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] text-[#1F1F1F]"
                     placeholder="z.B. 60"
                   />
                 </div>
@@ -400,7 +410,7 @@ export default function SalonProfilePage() {
                     type="text"
                     value={form.size || ''}
                     onChange={e => setForm(f => ({ ...f, size: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] text-[#1F1F1F]"
                     placeholder="z.B. S, M, L, 38"
                   />
                 </div>
@@ -410,7 +420,7 @@ export default function SalonProfilePage() {
                     type="text"
                     value={form.hobbies || ''}
                     onChange={e => setForm(f => ({ ...f, hobbies: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] text-[#1F1F1F]"
                     placeholder="z.B. Yoga, Reisen, Fotografie"
                   />
                 </div>
@@ -420,7 +430,7 @@ export default function SalonProfilePage() {
                     type="text"
                     value={form.serviceHours || ''}
                     onChange={e => setForm(f => ({ ...f, serviceHours: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] text-[#1F1F1F]"
                     placeholder="z.B. Mo-Fr 10-18 Uhr"
                   />
                 </div>
@@ -429,21 +439,22 @@ export default function SalonProfilePage() {
                   <textarea
                     value={form.paymentInstructions || ''}
                     onChange={e => setForm(f => ({ ...f, paymentInstructions: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#5C6F68] text-[#1F1F1F]"
+                    className="w-full px-3 py-2 border border-[#E4DED5] rounded-lg focus:ring-2 focus:ring-[#F48FB1] text-[#1F1F1F]"
                     rows={3}
                     placeholder="z.B. PayPal: meine@email.de oder IBAN: DE..."
                   />
                 </div>
               {/* Google Maps address removed for marketplace */}
               <label className="block text-black font-medium mt-4 mb-2">
-                Kontakt
+                Kontakt <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={salonContact}
                 onChange={e => setSalonContact(e.target.value)}
+                required
                 className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-md border border-gray-300 focus:border-primary-600 focus:ring-2 focus:ring-primary-100 text-black text-base outline-none transition"
-                placeholder="Telefon, E-Mail oder Social Media"
+                placeholder="E-Mail-Adresse (Pflichtfeld)"
               />
             </div>
 
@@ -451,7 +462,7 @@ export default function SalonProfilePage() {
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <h3 className="text-base sm:text-lg font-semibold text-black mb-4 flex items-center gap-2">
                 <span className="inline-flex items-center justify-center w-8 h-8"></span>
-                Profilbilder
+                Profilbilder <span className="text-red-500">*</span>
               </h3>
               {/* Primary image */}
               <div className="mb-6">
@@ -527,7 +538,7 @@ export default function SalonProfilePage() {
               <button
               type="submit"
               className="hover:bg-green-500 text-white font-semibold px-6 sm:px-8 py-2 sm:py-3 rounded-lg shadow transition min-w-[120px] sm:min-w-[140px]"
-              style={{ backgroundColor: "#9DBE8D", color: "#000" }}
+              style={{ backgroundColor: "#F48FB1", color: "#000" }}
               >
               Speichern
               </button>
@@ -538,15 +549,15 @@ export default function SalonProfilePage() {
           {status && (
             <div
               className={`mt-8 flex items-center gap-2 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium text-sm sm:text-base ${
-                status.startsWith("Fehler")
-                  ? "bg-red-50 text-black border border-red-200"
-                  : "bg-green-50 text-black border border-green-200"
+                status.includes("erfolgreich")
+                  ? "bg-green-50 text-black border border-green-200"
+                  : "bg-red-50 text-black border border-red-200"
               }`}
             >
               <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full font-bold ${
-                status.startsWith("Fehler") ? "bg-red-600 text-white" : "bg-green-600 text-white"
+                status.includes("erfolgreich") ? "bg-green-600 text-white" : "bg-red-600 text-white"
               }`}>
-                {status.startsWith("Fehler") ? "!" : "✓"}
+                {status.includes("erfolgreich") ? "✓" : "!"}
               </span>
               {status}
             </div>

@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, Suspense, useMemo, useCallback } from "react";
-import { FiMapPin, FiPhone, FiScissors, FiStar, FiFilter, FiX } from "react-icons/fi";
+import { FiMapPin, FiPhone, FiStar, FiFilter, FiX } from "react-icons/fi";
+import { GiUnderwear } from "react-icons/gi";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import Navbar from "../../components/navbar";
@@ -9,10 +10,10 @@ import ChatWidget from "../../components/ChatWidget";
 
 // Color palette (same as dashboard)
 const COLORS = {
-  primary: "#5C6F68",
+  primary: "#F48FB1",
   accent: "#E4DED5",
   text: "#1F1F1F",
-  highlight: "#9DBE8D",
+  highlight: "#F48FB1",
   background: "#FAFAFA",
   card: "#fff",
   border: "#E4DED5"
@@ -391,7 +392,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 flex items-center">
-                  <FiScissors className="mr-2 text-[#5C6F68]" /> Marktplatz
+                  <GiUnderwear className="mr-2 text-[#F48FB1]" /> Marktplatz
                 </h1>
               </div>
               <div className="flex items-center w-full md:w-auto">
@@ -405,7 +406,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                       setFilterService("");
                     }
                   }}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white w-full md:w-auto focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white w-full md:w-auto focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent"
                   style={{ minWidth: 0 }}
                 />
               </div>
@@ -413,7 +414,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
             {/* Mobile Filters & Sort Button */}
             <div className="flex sm:hidden mt-2">
               <button
-                className="flex items-center gap-2 px-4 py-2 bg-[#5C6F68] text-white rounded-md font-medium w-full justify-center"
+                className="flex items-center gap-2 px-4 py-2 bg-[#F48FB1] text-white rounded-md font-medium w-full justify-center"
                 onClick={() => setShowFilterModal(true)}
               >
                 <FiFilter className="w-5 h-5" />
@@ -426,7 +427,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                 <select
                   value={filterService}
                   onChange={e => setFilterService(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white w-full sm:min-w-[160px] focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white w-full sm:min-w-[160px] focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent"
                 >
                   <option value="">Alle Produktarten</option>
                   {allServiceTypes.map(serviceType => (
@@ -440,7 +441,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                 <select
                   value={sortBy}
                   onChange={e => setSortBy(e.target.value as any)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white w-full sm:min-w-[140px] focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white w-full sm:min-w-[140px] focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent"
                 >
                   <option value="name" className="text-[#1F1F1F] bg-white">Sortieren nach Name</option>
                   <option value="price-low" className="text-[#1F1F1F] bg-white">Preis: aufsteigend</option>
@@ -450,7 +451,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                 <select
                   value={filterRating}
                   onChange={e => setFilterRating(Number(e.target.value))}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white w-full sm:min-w-[120px] focus:ring-2 focus:ring-[#5C6F68] focus:border-transparent"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1F1F1F] bg-white w-full sm:min-w-[120px] focus:ring-2 focus:ring-[#F48FB1] focus:border-transparent"
                 >
                   <option value={0}>Alle Bewertungen</option>
                   <option value={1}>1+ Sterne</option>
@@ -472,7 +473,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                 >
                   <FiX className="w-6 h-6" />
                 </button>
-                  <h2 className="text-lg font-semibold mb-4 text-[#5C6F68] flex items-center">
+                  <h2 className="text-lg font-semibold mb-4 text-[#F48FB1] flex items-center">
                     <FiFilter className="mr-2" /> Filter & Sortieren
                   </h2>
                   <div className="flex flex-col gap-4">
@@ -511,7 +512,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <option value={5}>5 Sterne</option>
                     </select>
                     <button
-                      className="mt-2 bg-[#5C6F68] text-white rounded-md px-4 py-2 font-medium"
+                      className="mt-2 bg-[#F48FB1] text-white rounded-md px-4 py-2 font-medium"
                       onClick={() => setShowFilterModal(false)}
                     >
                       Anwenden
@@ -542,21 +543,31 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                       key={salon._id}
                       className="bg-white rounded-lg shadow-sm border border-[#E4DED5] flex flex-col overflow-hidden hover:shadow-md transform hover:-translate-y-1 transition-all duration-200"
                     >
-                      {salon.imageUrls && salon.imageUrls.length > 0 && (
-                        <img
-                          src={salon.imageUrls[0]}
-                          alt={salon.name}
-                          className="w-full h-40 sm:h-48 object-cover"
-                          style={{ background: COLORS.accent }}
-                          loading="lazy"
-                        />
-                      )}
+                      <div className="relative">
+                        {salon.imageUrls && salon.imageUrls.length > 0 && (
+                          <img
+                            src={salon.imageUrls[0]}
+                            alt={salon.name}
+                            className="w-full h-40 sm:h-48 object-cover"
+                            style={{ background: COLORS.accent }}
+                            loading="lazy"
+                          />
+                        )}
+                        {salon.verified && (
+                          <div className="absolute top-2 right-2 z-10">
+                            <svg className="w-6 h-6 sm:w-7 sm:h-7 drop-shadow-md" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" fill="#2196F3" />
+                              <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
                       <div className="p-4 sm:p-6 flex-1 flex flex-col">
                         <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2 flex items-start break-words">
-                          <FiScissors className="mr-2 text-[#5C6F68] flex-shrink-0 mt-1" /> 
+                          <GiUnderwear className="mr-2 text-[#F48FB1] flex-shrink-0 mt-1" /> 
                           <span className="break-words">{salon.name}</span>
                         </h2>
-                        <p className="text-[#5C6F68] font-medium mb-2 text-sm sm:text-base">
+                        <p className="text-[#F48FB1] font-medium mb-2 text-sm sm:text-base">
                           {getPriceRangeMemo(salon.uid) ? (
                             <>Preisbereich: {getPriceRangeMemo(salon.uid)}</>
                           ) : (
@@ -567,7 +578,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                           {[...Array(5)].map((_, i) => (
                             <FiStar
                               key={i}
-                              className={`w-4 h-4 sm:w-5 sm:h-5 ${i < Math.round(ratings[salon.uid] || 0) ? "text-[#9DBE8D] fill-current" : "text-gray-300"}`}
+                              className={`w-4 h-4 sm:w-5 sm:h-5 ${i < Math.round(ratings[salon.uid] || 0) ? "text-[#F48FB1] fill-current" : "text-gray-300"}`}
                             />
                           ))}
                           <span className="ml-2 text-[#1F1F1F] font-medium text-sm sm:text-base">
@@ -576,18 +587,20 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </div>
                         <p className="text-gray-700 mb-2 text-sm sm:text-base line-clamp-3 flex-grow">{salon.description}</p>
                         <div className="mt-auto space-y-1">
-                          <div className="flex items-start text-gray-600 text-xs sm:text-sm">
-                            <FiMapPin className="mr-1 text-[#9DBE8D] flex-shrink-0 mt-0.5" />
-                            <span className="break-words">{salon.location}</span>
-                          </div>
+                          {salon.location && (
+                            <div className="flex items-start text-gray-600 text-xs sm:text-sm">
+                              <FiMapPin className="mr-1 text-[#F48FB1] flex-shrink-0 mt-0.5" />
+                              <span className="break-words">{salon.location}</span>
+                            </div>
+                          )}
                           <div className="flex items-center text-gray-600 text-xs sm:text-sm">
-                            <FiPhone className="mr-1 text-[#5C6F68] flex-shrink-0" />
+                            <FiPhone className="mr-1 text-[#F48FB1] flex-shrink-0" />
                             <span className="break-all">{salon.contact}</span>
                           </div>
                         </div>
                         <div className="mt-4">
                           <button
-                            className="bg-[#5C6F68] hover:bg-[#4a5a54] text-white font-medium py-2.5 px-4 rounded-md w-full transition-colors duration-200 text-sm sm:text-base active:bg-[#3d4a44]"
+                            className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-medium py-2.5 px-4 rounded-md w-full transition-colors duration-200 text-sm sm:text-base active:bg-[#3d4a44]"
                             onClick={() => router.push(`/salon/${slug}`)}
                           >
                             Profil ansehen
