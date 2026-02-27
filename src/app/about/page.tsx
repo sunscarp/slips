@@ -154,7 +154,7 @@ export default function AboutPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
-                href="/salons"
+                href="/sellers"
                 className="inline-block text-white font-semibold px-6 py-3 rounded-lg transition-colors"
                 style={{ backgroundColor: COLORS.primary }}
               >

@@ -13,7 +13,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "tastyslips",
+  title: {
+    template: "%s | tastyslips",
+    default: "tastyslips",
+  },
   description: "Dein diskreter Marktplatz für exklusive Artikel",
 };
 

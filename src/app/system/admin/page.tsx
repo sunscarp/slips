@@ -772,7 +772,7 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                       <button
-                        onClick={() => window.open(`/salon/${salon.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")}`, '_blank')}
+                        onClick={() => window.open(`/seller/${salon.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")}`, '_blank')}
                         style={{
                           background: COLORS.primary,
                           color: "#fff",

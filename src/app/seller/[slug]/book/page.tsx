@@ -286,7 +286,7 @@ export default function PurchaseRequestPage() {
           <p className="text-gray-600 mb-6">Bitte wähle zuerst Produkte aus, bevor du eine Anfrage sendest.</p>
           <button
             className="bg-[#F48FB1] hover:bg-[#EC407A] text-white px-6 py-3 text-sm font-medium transition-colors rounded-lg"
-            onClick={() => router.push("/salons")}
+            onClick={() => router.push("/sellers")}
           >
             Zum Marktplatz
           </button>
@@ -576,7 +576,7 @@ export default function PurchaseRequestPage() {
                 </button>
                 <button
                   className="bg-[#E4DED5] hover:bg-[#d2cbb7] text-[#1F1F1F] px-6 py-3 font-semibold transition-colors rounded-lg"
-                  onClick={() => router.push('/salons')}
+                  onClick={() => router.push('/sellers')}
                 >
                   Weiter stöbern
                 </button>

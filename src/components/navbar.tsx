@@ -88,7 +88,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
   }, [mobileMenuOpen]);
 
   // Only calculate active states after client hydration
-  const isSalons = isClient ? pathname === "/salons" : false;
+  const isSellers = isClient ? pathname === "/sellers" : false;
   const isBookings = isClient ? pathname === "/bookings" : false;
 
   const handleLogout = async (e: React.MouseEvent) => {
@@ -155,11 +155,11 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
         }}
       >
         <a
-          href="/salons"
+          href="/sellers"
           style={{
             color: "rgb(0, 0, 0)",
             fontWeight: 500,
-            textDecoration: isSalons ? "underline" : "none",
+            textDecoration: isSellers ? "underline" : "none",
             fontFamily: "Inter, sans-serif",
             fontSize: "1rem",
             marginRight: 8,
@@ -336,13 +336,13 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
           >
             <div style={{ padding: "8px 0" }}>
               <a
-                href="/salons"
+                href="/sellers"
                 onClick={handleMobileLinkClick}
                 style={{
                   display: "block",
                   color: "rgb(0, 0, 0)",
                   fontWeight: 500,
-                  textDecoration: isSalons ? "underline" : "none",
+                  textDecoration: isSellers ? "underline" : "none",
                   fontFamily: "Inter, sans-serif",
                   fontSize: "1rem",
                   padding: "12px 16px",

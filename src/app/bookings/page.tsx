@@ -434,7 +434,7 @@ export default function BuyerTrackingPage() {
             <h2 className="text-xl font-medium text-gray-900 mb-2">Keine Anfragen</h2>
             <p className="text-gray-600 mb-6">Du hast noch keine Kaufanfragen gesendet.</p>
             <a
-              href="/salons"
+              href="/sellers"
               className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-medium py-2 px-4 rounded-lg transition inline-block"
               style={{ textDecoration: "none" }}
             >
@@ -457,7 +457,7 @@ export default function BuyerTrackingPage() {
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">
                         <a
-                          href={`/salon/${slugify(salon?.name || '')}`}
+                          href={`/seller/${slugify(salon?.name || '')}`}
                           className="hover:underline hover:text-[#F48FB1] transition-colors"
                         >
                           {salon?.name || 'Verkäufer'}

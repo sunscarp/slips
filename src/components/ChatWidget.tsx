@@ -363,7 +363,7 @@ export default function ChatWidget({
                     const conv = conversations.find(c => c.bookingId === activeBookingId);
                     const name = conv?.otherPartyName || "Chat";
                     return conv?.sellerSlug ? (
-                      <a href={`/salon/${conv.sellerSlug}`} className="hover:underline">{name}</a>
+                      <a href={`/seller/${conv.sellerSlug}`} className="hover:underline">{name}</a>
                     ) : name;
                   })()
                 ) : "Nachrichten"}
@@ -406,7 +406,7 @@ export default function ChatWidget({
                       <div className="flex items-center justify-between gap-2">
                         {conv.sellerSlug ? (
                           <a
-                            href={`/salon/${conv.sellerSlug}`}
+                            href={`/seller/${conv.sellerSlug}`}
                             className="font-semibold text-gray-900 text-sm truncate hover:underline hover:text-[#F48FB1] transition-colors"
                             onClick={(e) => e.stopPropagation()}
                           >

@@ -416,11 +416,11 @@ export default function HomePage() {
       setSearchError("Bitte gib mindestens ein Suchkriterium ein.");
       return;
     }
-    // Redirect to /salons (marketplace) with query params
+    // Redirect to /sellers (marketplace) with query params
     const params = new URLSearchParams();
     if (query.name) params.append("name", query.name);
     if (query.treatment) params.append("treatment", query.treatment);
-    router.push(`/salons?${params.toString()}`);
+    router.push(`/sellers?${params.toString()}`);
   }
 
   return (
@@ -508,7 +508,7 @@ export default function HomePage() {
                       transition: "transform 0.2s, box-shadow 0.2s",
                       cursor: "pointer",
                     }}
-                    onClick={() => router.push(`/salon/${slug}`)}
+                    onClick={() => router.push(`/seller/${slug}`)}
                     onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(0,0,0,0.1)"; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
                   >
@@ -559,7 +559,7 @@ export default function HomePage() {
             {salons.length > 6 && (
               <div style={{ textAlign: "center", marginTop: isMobile ? 24 : 36 }}>
                 <button
-                  onClick={() => router.push("/salons")}
+                  onClick={() => router.push("/sellers")}
                   style={{
                     background: COLORS.primary,
                     color: "#fff",

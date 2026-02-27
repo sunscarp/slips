@@ -601,7 +601,7 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <div className="mt-4">
                           <button
                             className="bg-[#F48FB1] hover:bg-[#EC407A] text-white font-medium py-2.5 px-4 rounded-md w-full transition-colors duration-200 text-sm sm:text-base active:bg-[#3d4a44]"
-                            onClick={() => router.push(`/salon/${slug}`)}
+                            onClick={() => router.push(`/seller/${slug}`)}
                           >
                             Profil ansehen
                           </button>

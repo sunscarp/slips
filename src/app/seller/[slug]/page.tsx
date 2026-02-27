@@ -233,7 +233,7 @@ export default function SalonPage() {
       }
       // Pass selected product IDs as query param
       const ids = cartServices.map(s => s._id).join(",");
-      router.push(`/salon/${slug}/book?serviceIds=${ids}`);
+      router.push(`/seller/${slug}/book?serviceIds=${ids}`);
     }
   };
 

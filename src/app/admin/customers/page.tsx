@@ -682,7 +682,7 @@ export default function CustomersPage() {
                               {booking.date} um {booking.time}
                             </div>
                             <div className="text-sm text-gray-600">
-                              {booking.salonInfo?.name || 'Salon'}
+                              {booking.salonInfo?.name || 'Verkäufer'}
                             </div>
                             <div className="text-sm text-gray-600">
                               {booking.services?.map(s => s.name).join(', ') || 'Services'}

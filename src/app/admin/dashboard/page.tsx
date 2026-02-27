@@ -785,10 +785,10 @@ const CalendarWidget = ({ bookings, isExpanded, salon }: {
             )}
           </div>
           <p className="text-lg font-medium mb-2 text-gray-600">
-            {isTodayHoliday ? 'Holiday Today' : 'Salon Closed Today'}
+            {isTodayHoliday ? 'Feiertag' : 'Heute keine Bestellungen'}
           </p>
           <p className="text-sm text-gray-500">
-            {isTodayHoliday ? 'Enjoy your holiday!' : 'No appointments scheduled'}
+            {isTodayHoliday ? 'Genieße den freien Tag!' : 'Keine Bestellungen geplant'}
           </p>
         </div>
       ) : todayBookings.length > 0 ? (

@@ -33,7 +33,7 @@ export default function BookingPage() {
           <h2 className="text-2xl font-bold mb-4">Keine Produkte ausgewählt</h2>
           <button
             className="bg-[#F48FB1] text-white px-6 py-3 rounded-lg font-semibold"
-            onClick={() => router.push("/salons")}
+            onClick={() => router.push("/sellers")}
           >
             Zum Marktplatz
           </button>
