@@ -50,6 +50,13 @@ export default function AdminDashboard() {
     order: 1
   });
 
+  // Ticket management state
+  const [showTickets, setShowTickets] = useState(false);
+  const [allTickets, setAllTickets] = useState<any[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [ticketReply, setTicketReply] = useState("");
+  const [ticketStatusUpdate, setTicketStatusUpdate] = useState("");
+
   useEffect(() => {
     const email = typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
     setCurrentEmail(email);
@@ -371,6 +378,74 @@ export default function AdminDashboard() {
     } catch (error) {
       setPlans([]);
       console.error("Error fetching plans:", error);
+    }
+  };
+
+  const fetchTickets = async () => {
+    try {
+      const res = await fetch("/api/tickets?systemAdmin=true");
+      if (res.ok) {
+        const data = await res.json();
+        setAllTickets(data.tickets || []);
+      } else {
+        setAllTickets([]);
+      }
+    } catch (error) {
+      setAllTickets([]);
+      console.error("Error fetching tickets:", error);
+    }
+  };
+
+  const handleTicketReply = async (ticketId: string) => {
+    if (!ticketReply.trim()) return;
+    try {
+      const res = await fetch("/api/tickets", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId,
+          message: {
+            senderName: "Admin",
+            senderRole: "admin",
+            text: ticketReply.trim()
+          }
+        })
+      });
+      if (res.ok) {
+        setTicketReply("");
+        // Refresh ticket
+        const ticketRes = await fetch(`/api/tickets?ticketId=${ticketId}`);
+        if (ticketRes.ok) {
+          const data = await ticketRes.json();
+          if (data.tickets?.[0]) {
+            setSelectedTicket(data.tickets[0]);
+            setAllTickets(prev => prev.map(t => t._id === ticketId ? data.tickets[0] : t));
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error replying to ticket:", error);
+    }
+  };
+
+  const handleTicketStatusChange = async (ticketId: string, newStatus: string) => {
+    try {
+      const res = await fetch("/api/tickets", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId,
+          status: newStatus
+        })
+      });
+      if (res.ok) {
+        setAllTickets(prev => prev.map(t => t._id === ticketId ? { ...t, status: newStatus } : t));
+        if (selectedTicket?._id === ticketId) {
+          setSelectedTicket((prev: any) => prev ? { ...prev, status: newStatus } : prev);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating ticket status:", error);
     }
   };
 
@@ -2387,6 +2462,242 @@ export default function AdminDashboard() {
                   }}
                 >
                   Stornieren
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =================== TICKETS SECTION =================== */}
+        <h2
+          style={{
+            color: COLORS.text,
+            fontWeight: 800,
+            fontSize: "1.3rem",
+            marginBottom: 16,
+            marginTop: 32,
+            letterSpacing: -0.5,
+          }}
+        >
+          Support-Tickets
+        </h2>
+        <button
+          onClick={() => {
+            setShowTickets(!showTickets);
+            if (!showTickets) {
+              fetchTickets();
+            }
+          }}
+          style={{
+            background: "#ef4444",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "0.75rem 1.5rem",
+            fontWeight: 600,
+            fontSize: "1rem",
+            cursor: "pointer",
+            marginBottom: 16,
+            transition: "background 0.2s",
+            boxShadow: "0 1px 4px #ef444410",
+          }}
+          onMouseOver={(e) => e.currentTarget.style.background = "#dc2626"}
+          onMouseOut={(e) => e.currentTarget.style.background = "#ef4444"}
+        >
+          {showTickets ? "Tickets verstecken" : "Alle Tickets anzeigen"}
+        </button>
+
+        {showTickets && (
+          <div style={{
+            background: "#f8f9fa",
+            borderRadius: 8,
+            padding: "1rem",
+            marginBottom: 24,
+            border: "1px solid #ef444420",
+          }}>
+            {allTickets.length === 0 ? (
+              <p style={{ color: "#888", textAlign: "center", padding: "2rem 0" }}>Keine Tickets vorhanden</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {allTickets.map((ticket: any) => (
+                  <div
+                    key={ticket._id}
+                    onClick={() => setSelectedTicket(ticket)}
+                    style={{
+                      background: "#fff",
+                      borderRadius: 8,
+                      padding: "12px 16px",
+                      border: `1px solid ${selectedTicket?._id === ticket._id ? '#ef4444' : '#e5e7eb'}`,
+                      cursor: "pointer",
+                      transition: "border-color 0.2s",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <strong style={{ color: "#000", fontSize: "0.95rem" }}>{ticket.subject}</strong>
+                      <span style={{
+                        background: ticket.status === 'open' ? '#fef3c7' : ticket.status === 'in_progress' ? '#dbeafe' : ticket.status === 'resolved' ? '#d1fae5' : '#f3f4f6',
+                        color: ticket.status === 'open' ? '#92400e' : ticket.status === 'in_progress' ? '#1e40af' : ticket.status === 'resolved' ? '#065f46' : '#374151',
+                        padding: "2px 8px",
+                        borderRadius: 12,
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                      }}>
+                        {ticket.status === 'open' ? 'Offen' : ticket.status === 'in_progress' ? 'In Bearbeitung' : ticket.status === 'resolved' ? 'Gelöst' : 'Geschlossen'}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 16, fontSize: "0.8rem", color: "#666" }}>
+                      <span>Von: {ticket.raisedByName} ({ticket.raisedByRole === 'buyer' ? 'Käufer' : 'Verkäufer'})</span>
+                      <span>{new Date(ticket.createdAt).toLocaleDateString('de-DE')}</span>
+                    </div>
+                    {ticket.bookingId && (
+                      <div style={{ fontSize: "0.75rem", color: "#888", marginTop: 2 }}>
+                        Bestellung: {ticket.bookingId}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Ticket Detail Modal */}
+        {selectedTicket && (
+          <div style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.3)",
+            zIndex: 1000,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 16,
+          }}
+            onClick={() => setSelectedTicket(null)}
+          >
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: 12,
+                padding: 24,
+                maxWidth: 600,
+                width: "100%",
+                maxHeight: "80vh",
+                overflowY: "auto",
+                boxShadow: "0 8px 24px #00000020",
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ margin: 0, color: "#000", fontSize: "1.2rem" }}>{selectedTicket.subject}</h3>
+                  <div style={{ fontSize: "0.85rem", color: "#666", marginTop: 4 }}>
+                    Von: {selectedTicket.raisedByName} ({selectedTicket.raisedByRole === 'buyer' ? 'Käufer' : 'Verkäufer'}) · {selectedTicket.raisedByEmail}
+                  </div>
+                  <div style={{ fontSize: "0.8rem", color: "#888", marginTop: 2 }}>
+                    Erstellt: {new Date(selectedTicket.createdAt).toLocaleString('de-DE')}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedTicket(null)}
+                  style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#888" }}
+                >×</button>
+              </div>
+
+              {/* Description */}
+              <div style={{ background: "#f8f9fa", borderRadius: 8, padding: 12, marginBottom: 16, color: "#000" }}>
+                <strong>Beschreibung:</strong>
+                <p style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{selectedTicket.description}</p>
+              </div>
+
+              {selectedTicket.bookingId && (
+                <div style={{ background: "#eff6ff", borderRadius: 8, padding: 8, marginBottom: 16, fontSize: "0.85rem", color: "#1e40af" }}>
+                  Bestellung: {selectedTicket.bookingId}
+                </div>
+              )}
+
+              {/* Status Change */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+                {['open', 'in_progress', 'resolved', 'closed'].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => handleTicketStatusChange(selectedTicket._id, s)}
+                    style={{
+                      background: selectedTicket.status === s ? '#5C6F68' : '#e5e7eb',
+                      color: selectedTicket.status === s ? '#fff' : '#374151',
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "6px 12px",
+                      fontSize: "0.8rem",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {s === 'open' ? 'Offen' : s === 'in_progress' ? 'In Bearbeitung' : s === 'resolved' ? 'Gelöst' : 'Geschlossen'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Messages */}
+              <div style={{ marginBottom: 16 }}>
+                <strong style={{ color: "#000" }}>Nachrichten:</strong>
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {(!selectedTicket.messages || selectedTicket.messages.length === 0) ? (
+                    <p style={{ color: "#888", fontSize: "0.85rem" }}>Noch keine Nachrichten</p>
+                  ) : (
+                    selectedTicket.messages.map((msg: any, idx: number) => (
+                      <div key={idx} style={{
+                        background: msg.senderRole === 'admin' ? '#eff6ff' : '#f3f4f6',
+                        borderRadius: 8,
+                        padding: "8px 12px",
+                        borderLeft: msg.senderRole === 'admin' ? '3px solid #3b82f6' : '3px solid #9ca3af',
+                      }}>
+                        <div style={{ fontSize: "0.8rem", fontWeight: 600, color: msg.senderRole === 'admin' ? '#1e40af' : '#374151' }}>
+                          {msg.senderName} ({msg.senderRole === 'admin' ? 'Admin' : msg.senderRole === 'buyer' ? 'Käufer' : 'Verkäufer'})
+                        </div>
+                        <p style={{ margin: "4px 0 0", fontSize: "0.9rem", color: "#000", whiteSpace: "pre-wrap" }}>{msg.text}</p>
+                        <div style={{ fontSize: "0.7rem", color: "#888", marginTop: 2 }}>
+                          {new Date(msg.createdAt).toLocaleString('de-DE')}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Reply */}
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="text"
+                  value={ticketReply}
+                  onChange={e => setTicketReply(e.target.value)}
+                  placeholder="Antwort schreiben..."
+                  onKeyDown={e => { if (e.key === 'Enter') handleTicketReply(selectedTicket._id); }}
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: 6,
+                    fontSize: "0.9rem",
+                    color: "#000",
+                  }}
+                />
+                <button
+                  onClick={() => handleTicketReply(selectedTicket._id)}
+                  disabled={!ticketReply.trim()}
+                  style={{
+                    background: "#3b82f6",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 6,
+                    padding: "8px 16px",
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                    fontWeight: 500,
+                    opacity: ticketReply.trim() ? 1 : 0.5,
+                  }}
+                >
+                  Antworten
                 </button>
               </div>
             </div>

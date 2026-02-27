@@ -1,9 +1,10 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../../components/navbar";
 import Footer from "../../components/footer";
-import { FiShoppingBag, FiMapPin, FiStar, FiLock } from "react-icons/fi";
+import ChatWidget from "../../components/ChatWidget";
+import { FiShoppingBag, FiMapPin, FiStar, FiLock, FiMessageSquare, FiSend, FiAlertTriangle } from "react-icons/fi";
 
 const COLORS = {
   primary: "#5C6F68",
@@ -76,6 +77,20 @@ export default function BuyerTrackingPage() {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const router = useRouter();
+
+  // Chat state
+  const [chatBookingId, setChatBookingId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  
+  // Ticket state
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [ticketSubject, setTicketSubject] = useState("");
+  const [ticketDescription, setTicketDescription] = useState("");
+  const [ticketBookingId, setTicketBookingId] = useState<string | null>(null);
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
 
   // Check auth and fetch orders
   useEffect(() => {
@@ -175,6 +190,84 @@ export default function BuyerTrackingPage() {
       alert('Fehler beim Senden der Bewertung');
     } finally {
       setSubmittingReview(false);
+    }
+  };
+
+  // Chat functions
+  const openChat = async (bookingId: string) => {
+    setChatBookingId(bookingId);
+    setChatLoading(true);
+    try {
+      const res = await fetch(`/api/messages?bookingId=${encodeURIComponent(bookingId)}`);
+      const data = await res.json();
+      setChatMessages(data.messages || []);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      setChatMessages([]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const sendMessage = async (text: string) => {
+    if (!chatBookingId || !text.trim() || !user) return;
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: chatBookingId,
+          senderUid: user.uid,
+          senderName: user.name || user.username || 'Käufer',
+          senderRole: 'buyer',
+          text: text.trim(),
+          type: 'text'
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setChatMessages(prev => [...prev, data.message]);
+        setChatInput("");
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Ticket functions
+  const submitTicket = async () => {
+    if (!ticketSubject.trim() || !ticketDescription.trim() || !user) return;
+    setTicketSubmitting(true);
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          raisedByUid: user.uid,
+          raisedByName: user.name || user.username || 'Käufer',
+          raisedByEmail: user.email || '',
+          raisedByRole: 'buyer',
+          subject: ticketSubject.trim(),
+          description: ticketDescription.trim(),
+          bookingId: ticketBookingId || null
+        })
+      });
+      if (res.ok) {
+        setShowTicketForm(false);
+        setTicketSubject("");
+        setTicketDescription("");
+        setTicketBookingId(null);
+        alert('Ticket wurde erfolgreich erstellt!');
+      }
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      alert('Fehler beim Erstellen des Tickets');
+    } finally {
+      setTicketSubmitting(false);
     }
   };
 
@@ -408,6 +501,22 @@ export default function BuyerTrackingPage() {
                       </button>
                     </div>
                   )}
+
+                  {/* Chat + Ticket buttons */}
+                  <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => openChat(request._id)}
+                      className="flex items-center gap-1 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md transition"
+                    >
+                      <FiMessageSquare className="w-4 h-4" /> Nachricht an Verkäufer
+                    </button>
+                    <button
+                      onClick={() => { setShowTicketForm(true); setTicketBookingId(request._id); }}
+                      className="flex items-center gap-1 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition"
+                    >
+                      <FiAlertTriangle className="w-4 h-4" /> Problem melden
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -471,8 +580,78 @@ export default function BuyerTrackingPage() {
             </div>
           </div>
         )}
+
+
+
+        {/* Ticket Modal */}
+        {showTicketForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <FiAlertTriangle className="text-red-500" />
+                  Problem melden
+                </h3>
+                <button
+                  onClick={() => { setShowTicketForm(false); setTicketSubject(""); setTicketDescription(""); setTicketBookingId(null); }}
+                  className="text-gray-400 hover:text-gray-700 text-xl"
+                >×</button>
+              </div>
+              {ticketBookingId && (
+                <p className="text-xs text-gray-500 mb-3">Bezogen auf Bestellung: {ticketBookingId}</p>
+              )}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Betreff</label>
+                  <input
+                    type="text"
+                    value={ticketSubject}
+                    onChange={e => setTicketSubject(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5C6F68]"
+                    placeholder="Kurze Beschreibung des Problems"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
+                  <textarea
+                    value={ticketDescription}
+                    onChange={e => setTicketDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5C6F68]"
+                    rows={4}
+                    placeholder="Beschreiben Sie das Problem im Detail..."
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={submitTicket}
+                    disabled={ticketSubmitting || !ticketSubject.trim() || !ticketDescription.trim()}
+                    className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition"
+                  >
+                    {ticketSubmitting ? 'Wird gesendet...' : 'Problem melden'}
+                  </button>
+                  <button
+                    onClick={() => { setShowTicketForm(false); setTicketSubject(""); setTicketDescription(""); setTicketBookingId(null); }}
+                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <Footer />
+      {/* Floating Chat Widget */}
+      {user && (
+        <ChatWidget
+          userUid={user.uid}
+          userName={user.name || user.username || user.email || 'Käufer'}
+          userRole="buyer"
+          openBookingId={chatBookingId}
+          onExternalClose={() => setChatBookingId(null)}
+        />
+      )}
     </main>
   );
 }

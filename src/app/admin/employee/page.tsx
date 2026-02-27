@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
+import ChatWidget from "../../../components/ChatWidget";
 
 export default function EmployeePage() {
   const [user, setUser] = useState<any>(null);
@@ -93,6 +94,14 @@ export default function EmployeePage() {
         </div>
       </main>
       <Footer />
+      {salon && (
+        <ChatWidget
+          userUid={salon.uid}
+          userName={user?.name || user?.username || salon.name || 'Verkäufer'}
+          userRole="seller"
+          salonUid={salon.uid}
+        />
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
+import ChatWidget from "../../../components/ChatWidget";
 import { useSearchParams } from "next/navigation";
 import { 
   FiTrendingUp, FiUsers, FiClock, /*FiDollarSign,*/ FiCalendar, 
@@ -720,6 +721,14 @@ function AnalyticsContent() {
         <Footer />
       </main>
       {/* Plan gating removed — modal suppressed */}
+      {salon && (
+        <ChatWidget
+          userUid={salon.uid}
+          userName={user?.name || user?.username || salon.name || 'Verkäufer'}
+          userRole="seller"
+          salonUid={salon.uid}
+        />
+      )}
     </>
   );
 }

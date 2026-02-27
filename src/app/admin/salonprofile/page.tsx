@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
+import ChatWidget from "../../../components/ChatWidget";
 
 const COLORS = {
   primary: "#5C6F68",
@@ -553,6 +554,14 @@ export default function SalonProfilePage() {
         </div>
         <Footer />
       </main>
+      {salon && (
+        <ChatWidget
+          userUid={salon.uid || ''}
+          userName={user?.name || user?.username || salon.name || 'Verkäufer'}
+          userRole="seller"
+          salonUid={salon.uid || ''}
+        />
+      )}
     </>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
-import { FiCalendar, FiUser, FiScissors, FiFilter, FiSearch } from "react-icons/fi";
+import ChatWidget from "../../../components/ChatWidget";
+import { FiCalendar, FiUser, FiScissors, FiFilter, FiSearch, FiMessageSquare, FiSend, FiAlertTriangle } from "react-icons/fi";
 
 // Constants
 const COLORS = {
@@ -68,6 +69,17 @@ type Activity = {
   user?: string;
 };
 
+type Message = {
+  _id?: string;
+  bookingId: string;
+  senderUid: string;
+  senderName: string;
+  senderRole: 'buyer' | 'seller';
+  text: string;
+  type: 'text' | 'payment_info' | 'payment_confirmed' | 'system';
+  createdAt: string;
+};
+
 export default function AdminBookingsPage() {
   const [user, setUser] = useState<any>(null);
   const [salon, setSalon] = useState<any>(null);
@@ -84,6 +96,22 @@ export default function AdminBookingsPage() {
   const [isSystemAdmin, setIsSystemAdmin] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [showActivities, setShowActivities] = useState(false);
+  
+  // Chat state
+  const [chatBookingId, setChatBookingId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [paymentInput, setPaymentInput] = useState("");
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  
+  // Ticket state
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [ticketSubject, setTicketSubject] = useState("");
+  const [ticketDescription, setTicketDescription] = useState("");
+  const [ticketBookingId, setTicketBookingId] = useState<string | null>(null);
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
 
   // Get current user and fetch salon info and role
   useEffect(() => {
@@ -255,16 +283,157 @@ export default function AdminBookingsPage() {
           )
         );
         
-        // If booking is completed, cancelled, or no-show, move to history
-        if (['completed', 'shipped', 'cancelled', 'rejected'].includes(action)) {
-          // Update filtered bookings to remove from current view if showing upcoming
+        // Only move to history when fully completed, rejected, or cancelled 
+        // (NOT shipped — shipped stays in active view until marked completed)
+        if (['completed', 'rejected', 'cancelled'].includes(action)) {
           if (!showHistory) {
             setFilteredBookings(prev => prev.filter(booking => booking._id !== id));
           }
         }
+        
+        // If action changes status, send a system message in chat
+        const statusLabels: {[k:string]: string} = {
+          accepted: 'Anfrage wurde angenommen',
+          payment_pending: 'Zahlung ausstehend',
+          shipped: 'Bestellung wurde als versendet markiert',
+          completed: 'Bestellung wurde als abgeschlossen markiert',
+          rejected: 'Anfrage wurde abgelehnt',
+          cancelled: 'Bestellung wurde storniert',
+        };
+        if (statusLabels[action] && salon) {
+          await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bookingId: id,
+              senderUid: salon.uid,
+              senderName: salon.name || 'Verkäufer',
+              senderRole: 'seller',
+              text: statusLabels[action],
+              type: 'system'
+            })
+          }).catch(console.error);
+        }
       }
     } catch (error) {
       console.error('Error updating booking:', error);
+    }
+  };
+
+  // Chat functions
+  const openChat = async (bookingId: string) => {
+    setChatBookingId(bookingId);
+    setChatLoading(true);
+    try {
+      const res = await fetch(`/api/messages?bookingId=${encodeURIComponent(bookingId)}`);
+      const data = await res.json();
+      setChatMessages(data.messages || []);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      setChatMessages([]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const sendMessage = async (text: string, type: string = 'text') => {
+    if (!chatBookingId || !text.trim() || !salon) return;
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: chatBookingId,
+          senderUid: salon.uid,
+          senderName: salon.name || 'Verkäufer',
+          senderRole: 'seller',
+          text: text.trim(),
+          type
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setChatMessages(prev => [...prev, data.message]);
+        setChatInput("");
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
+
+  const sendPaymentInfo = async () => {
+    if (!paymentInput.trim() || !chatBookingId) return;
+    await sendMessage(paymentInput.trim(), 'payment_info');
+    setPaymentInput("");
+    setShowPaymentForm(false);
+    
+    // Also update booking status to payment_pending and save payment instructions
+    await fetch('/api/bookings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bookingId: chatBookingId,
+        status: 'payment_pending',
+        paymentInstructions: paymentInput.trim()
+      })
+    });
+    
+    // Update local state
+    setBookings(prev => prev.map(b => b._id === chatBookingId ? { ...b, status: 'payment_pending' } : b));
+  };
+
+  const confirmPaymentReceived = async () => {
+    if (!chatBookingId) return;
+    await sendMessage('Zahlung erhalten ✓', 'payment_confirmed');
+    
+    // Update booking status to accepted (payment done, ready to ship)
+    await fetch('/api/bookings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bookingId: chatBookingId,
+        status: 'accepted'
+      })
+    });
+    
+    setBookings(prev => prev.map(b => b._id === chatBookingId ? { ...b, status: 'accepted' } : b));
+  };
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Ticket functions
+  const submitTicket = async (bookingId?: string) => {
+    if (!ticketSubject.trim() || !ticketDescription.trim() || !salon) return;
+    setTicketSubmitting(true);
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          raisedByUid: salon.uid,
+          raisedByName: salon.name || 'Verkäufer',
+          raisedByEmail: salon.email || '',
+          raisedByRole: 'seller',
+          subject: ticketSubject.trim(),
+          description: ticketDescription.trim(),
+          bookingId: bookingId || ticketBookingId || null
+        })
+      });
+      if (res.ok) {
+        setShowTicketForm(false);
+        setTicketSubject("");
+        setTicketDescription("");
+        setTicketBookingId(null);
+        alert('Ticket wurde erfolgreich erstellt!');
+      }
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      alert('Fehler beim Erstellen des Tickets');
+    } finally {
+      setTicketSubmitting(false);
     }
   };
 
@@ -408,12 +577,12 @@ export default function AdminBookingsPage() {
   }
 
   // Split bookings into upcoming and history
-  // Only show 'confirmed' bookings in upcoming, others in history
+  // Shipped stays in upcoming until marked as completed
   const upcomingBookings = filteredBookings.filter(
-    b => ['pending', 'accepted', 'payment_pending'].includes(b.status)
+    b => ['pending', 'accepted', 'payment_pending', 'shipped'].includes(b.status)
   );
   const historyBookings = filteredBookings.filter(
-    b => ['completed', 'shipped', 'rejected', 'cancelled'].includes(b.status)
+    b => ['completed', 'rejected', 'cancelled'].includes(b.status)
   );
 
   return (
@@ -441,15 +610,25 @@ export default function AdminBookingsPage() {
                   Verwalten Sie alle Kaufanfragen
                 </p>
               </div>
-              {/* Letzte Aktivitäten Button */}
-              <button
-                className="flex items-center gap-2 px-4 py-2 rounded-md bg-[#E4DED5] text-[#5C6F68] font-medium shadow-sm hover:bg-[#d7d2c7] transition"
-                onClick={() => setShowActivities(true)}
-                type="button"
-              >
-                <FiUser className="w-4 h-4" />
-                Letzte Aktivitäten
-              </button>
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-[#E4DED5] text-[#5C6F68] font-medium shadow-sm hover:bg-[#d7d2c7] transition"
+                  onClick={() => setShowActivities(true)}
+                  type="button"
+                >
+                  <FiUser className="w-4 h-4" />
+                  Letzte Aktivitäten
+                </button>
+                <button
+                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-red-50 text-red-700 font-medium shadow-sm hover:bg-red-100 transition"
+                  onClick={() => { setShowTicketForm(true); setTicketBookingId(null); }}
+                  type="button"
+                >
+                  <FiAlertTriangle className="w-4 h-4" />
+                  Ticket erstellen
+                </button>
+              </div>
             </div>
           </div>
 
@@ -637,7 +816,23 @@ export default function AdminBookingsPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 items-center">
+                      {/* Chat button - always visible */}
+                      <button
+                        onClick={() => openChat(booking._id)}
+                        className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1"
+                      >
+                        <FiMessageSquare className="w-3 h-3" /> Chat
+                      </button>
+                      
+                      {/* Ticket button */}
+                      <button
+                        onClick={() => { setShowTicketForm(true); setTicketBookingId(booking._id); }}
+                        className="bg-orange-50 text-orange-700 hover:bg-orange-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1"
+                      >
+                        <FiAlertTriangle className="w-3 h-3" /> Ticket
+                      </button>
+
                       {booking.status === 'pending' && (
                         <>
                           <button
@@ -673,10 +868,10 @@ export default function AdminBookingsPage() {
                       {booking.status === 'payment_pending' && (
                         <>
                           <button
-                            onClick={() => handleBookingAction(booking._id, 'shipped')}
-                            className="bg-purple-50 text-purple-700 hover:bg-purple-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
+                            onClick={() => handleBookingAction(booking._id, 'accepted')}
+                            className="bg-green-50 text-green-700 hover:bg-green-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
                           >
-                            Als versendet markieren
+                            Zahlung erhalten
                           </button>
                           <button
                             onClick={() => handleBookingAction(booking._id, 'cancelled')}
@@ -685,6 +880,14 @@ export default function AdminBookingsPage() {
                             Stornieren
                           </button>
                         </>
+                      )}
+                      {booking.status === 'shipped' && (
+                        <button
+                          onClick={() => handleBookingAction(booking._id, 'completed')}
+                          className="bg-green-50 text-green-700 hover:bg-green-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors"
+                        >
+                          Als abgeschlossen markieren
+                        </button>
                       )}
                     </div>
                   </div>
@@ -794,7 +997,21 @@ export default function AdminBookingsPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {/* Chat button - always visible */}
+                        <button
+                          onClick={() => openChat(booking._id)}
+                          className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1"
+                        >
+                          <FiMessageSquare className="w-3 h-3" /> Chat
+                        </button>
+                        {/* Ticket button */}
+                        <button
+                          onClick={() => { setShowTicketForm(true); setTicketBookingId(booking._id); }}
+                          className="bg-orange-50 text-orange-700 hover:bg-orange-100 px-2 py-0.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1"
+                        >
+                          <FiAlertTriangle className="w-3 h-3" /> Ticket
+                        </button>
                         {(booking.status === 'rejected' || booking.status === 'cancelled') && (
                           <button
                             onClick={() => handleBookingAction(booking._id, 'pending')}
@@ -830,9 +1047,80 @@ export default function AdminBookingsPage() {
               )
             )}
           </div>
+
+
+
+          {/* Ticket Modal */}
+          {showTicketForm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <FiAlertTriangle className="text-red-500" />
+                    Ticket an Admin erstellen
+                  </h3>
+                  <button
+                    onClick={() => { setShowTicketForm(false); setTicketSubject(""); setTicketDescription(""); setTicketBookingId(null); }}
+                    className="text-gray-400 hover:text-gray-700 text-xl"
+                  >×</button>
+                </div>
+                {ticketBookingId && (
+                  <p className="text-xs text-gray-500 mb-3">Bezogen auf Anfrage: {ticketBookingId}</p>
+                )}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Betreff</label>
+                    <input
+                      type="text"
+                      value={ticketSubject}
+                      onChange={e => setTicketSubject(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5C6F68]"
+                      placeholder="Kurze Beschreibung des Problems"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
+                    <textarea
+                      value={ticketDescription}
+                      onChange={e => setTicketDescription(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5C6F68]"
+                      rows={4}
+                      placeholder="Beschreiben Sie das Problem im Detail..."
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => submitTicket()}
+                      disabled={ticketSubmitting || !ticketSubject.trim() || !ticketDescription.trim()}
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition"
+                    >
+                      {ticketSubmitting ? 'Wird gesendet...' : 'Ticket senden'}
+                    </button>
+                    <button
+                      onClick={() => { setShowTicketForm(false); setTicketSubject(""); setTicketDescription(""); setTicketBookingId(null); }}
+                      className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition"
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
       <Footer />
+      {/* Floating Chat Widget */}
+      {salon && (
+        <ChatWidget
+          userUid={salon.uid}
+          userName={user?.name || user?.username || salon.name || 'Verkäufer'}
+          userRole="seller"
+          salonUid={salon.uid}
+          openBookingId={chatBookingId}
+          onExternalClose={() => setChatBookingId(null)}
+        />
+      )}
     </>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import Navbar from "../../components/navbar";
 import Footer from "../../components/footer";
+import ChatWidget from "../../components/ChatWidget";
 
 // Color palette (same as dashboard)
 const COLORS = {
@@ -107,24 +108,31 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const router = useRouter();
 
-  // Memoized user data
-  const userData = useMemo(() => {
-    if (typeof window !== "undefined") {
-      const userStr = window.localStorage.getItem("bookme_user");
-      if (userStr) {
-        try {
-          return JSON.parse(userStr);
-        } catch {
-          return null;
+  // Fetch authenticated user from API
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+        } else {
+          // Fallback to localStorage
+          const userStr = window.localStorage.getItem("bookme_user");
+          if (userStr) {
+            try { setUser(JSON.parse(userStr)); } catch { setUser(null); }
+          }
+        }
+      } catch {
+        // Fallback to localStorage
+        const userStr = window.localStorage.getItem("bookme_user");
+        if (userStr) {
+          try { setUser(JSON.parse(userStr)); } catch { setUser(null); }
         }
       }
     }
-    return null;
+    fetchUser();
   }, []);
-
-  useEffect(() => {
-    setUser(userData);
-  }, [userData]);
 
   // Optimized data fetching
   useEffect(() => {
@@ -595,6 +603,14 @@ function SalonsContent({ searchParams }: { searchParams: URLSearchParams }) {
         </div>
       </div>
       <Footer />
+      {/* Floating Chat Widget for logged-in buyers */}
+      {user && (
+        <ChatWidget
+          userUid={user.uid}
+          userName={user.name || user.username || user.email}
+          userRole="buyer"
+        />
+      )}
     </main>
   );
 }

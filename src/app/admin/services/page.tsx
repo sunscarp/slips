@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { FiEdit2, FiTrash2, FiPlus, FiScissors } from "react-icons/fi";
 import Navbar from "@/components/adminnavbar";
 import Footer from "@/components/footer";
+import ChatWidget from "@/components/ChatWidget";
 
 // --- Helper to call server actions ---
 async function callServerAction(action: string, payload: any) {
@@ -707,6 +708,14 @@ export default function ServicesPage() {
         </div>
         <Footer />
       </main>
+      {salon && (
+        <ChatWidget
+          userUid={salon.uid}
+          userName={user?.name || user?.username || salon.name || 'Verkäufer'}
+          userRole="seller"
+          salonUid={salon.uid}
+        />
+      )}
     </>
   );
 }

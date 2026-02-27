@@ -398,6 +398,15 @@ export default function SalonPage() {
                       : serviceTypeMap[selectedType ?? ""]
                     ).map(service => (
                       <div key={service._id} className="bg-white border border-[#E4DED5] first:rounded-t-lg last:rounded-b-lg hover:shadow-md transition-all duration-200 mb-4 sm:mb-0">
+                        {service.imageUrl && (
+                          <div className="w-full h-40 sm:h-48 overflow-hidden first:rounded-t-lg">
+                            <img
+                              src={service.imageUrl}
+                              alt={service.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
                         <div className="p-4 sm:p-6">
                           <div className="flex flex-col sm:flex-row items-start justify-between mb-2 sm:mb-4 gap-2">
                             <div className="flex-1">
@@ -698,6 +707,15 @@ export default function SalonPage() {
                 ×
               </button>
               <h2 className="text-2xl font-bold text-[#1F1F1F] mb-2">{detailsService.name}</h2>
+              {detailsService.imageUrl && (
+                <div className="w-full h-48 sm:h-64 overflow-hidden rounded-lg mb-4">
+                  <img
+                    src={detailsService.imageUrl}
+                    alt={detailsService.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-1">
                   {[...Array(5)].map((_, i) => (

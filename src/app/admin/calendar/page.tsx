@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
+import ChatWidget from "../../../components/ChatWidget";
 
 type CalendarBooking = {
   id: string;
@@ -219,6 +220,14 @@ export default function CalendarPage() {
       </main>
       {showPlanModal && (
         <PlanUpgradeModal plan={salon?.plan} plans={plans} />
+      )}
+      {salon && (
+        <ChatWidget
+          userUid={salon.uid}
+          userName={user?.name || user?.username || salon.name || 'Verkäufer'}
+          userRole="seller"
+          salonUid={salon.uid}
+        />
       )}
     </>
   );

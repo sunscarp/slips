@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
+import ChatWidget from "../../../components/ChatWidget";
 import { FiMessageSquare, FiStar, FiAward, FiUser, FiTrash2 } from "react-icons/fi";
 
 const COLORS = {
@@ -576,6 +577,14 @@ export default function ReviewsPage() {
         </div>
         <Footer />
       </main>
+      {salon && (
+        <ChatWidget
+          userUid={salon.uid}
+          userName={user?.name || user?.username || salon.name || 'Verkäufer'}
+          userRole="seller"
+          salonUid={salon.uid}
+        />
+      )}
     </>
   );
 }

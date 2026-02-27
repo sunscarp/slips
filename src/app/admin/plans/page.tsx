@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Navbar from "../../../components/adminnavbar";
+import ChatWidget from "@/components/ChatWidget";
 
 export default function PlansPage() {
 	const [user, setUser] = useState<any>(null);
@@ -438,6 +439,14 @@ export default function PlansPage() {
 					</div>
 				</div>
 			</div>
+			{salon && (
+				<ChatWidget
+					userUid={salon.uid}
+					userName={user?.name || user?.username || salon.name || 'Verkäufer'}
+					userRole="seller"
+					salonUid={salon.uid}
+				/>
+			)}
 		</>
 	);
 }

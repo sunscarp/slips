@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
+import ChatWidget from "../../../components/ChatWidget";
 
 const COLORS = {
   primary: "#5C6F68",
@@ -47,6 +48,9 @@ type Booking = {
     zip: string;
     country: string;
   };
+  buyerUid?: string;
+  buyerName?: string;
+  buyerEmail?: string;
   date: string;
   time: string;
   status: string;
@@ -60,6 +64,10 @@ type Booking = {
     name: string;
     price: number;
     employee: string;
+  }>;
+  items?: Array<{
+    name: string;
+    price: number;
   }>;
 };
 
@@ -160,14 +168,18 @@ export default function CustomersPage() {
       }>();
 
       allBookings.forEach(booking => {
-        // Use customerUid as primary key, fallback to phone number
-        const customerId = booking.customerUid || booking.customerPhone;
+        // Use customerUid or buyerUid as primary key, fallback to phone or email, then booking _id
+        const customerId = booking.customerUid || booking.buyerUid || booking.customerPhone || booking.buyerEmail || booking._id;
+        const customerName = booking.customerName || booking.buyerName || 'Unbekannt';
+        const customerPhone = booking.customerPhone || '';
+        const customerEmail = booking.buyerEmail;
         
         if (!customerMap.has(customerId)) {
           customerMap.set(customerId, {
-            uid: booking.customerUid,
-            name: booking.customerName,
-            phone: booking.customerPhone,
+            uid: booking.customerUid || booking.buyerUid,
+            name: customerName,
+            phone: customerPhone,
+            email: customerEmail,
             address: booking.customerAddress,
             bookings: []
           });
@@ -708,6 +720,14 @@ export default function CustomersPage() {
         </div>
       </main>
       <Footer />
+      {salon && (
+        <ChatWidget
+          userUid={salon.uid}
+          userName={user?.name || user?.username || salon.name || 'Verkäufer'}
+          userRole="seller"
+          salonUid={salon.uid}
+        />
+      )}
     </>
   );
 }

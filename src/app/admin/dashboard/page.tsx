@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../../../components/adminnavbar";
 import Footer from "@/components/footer";
+import ChatWidget from "../../../components/ChatWidget";
 import { FiCalendar, FiTrendingUp, FiStar, FiClock, FiUser, FiScissors } from "react-icons/fi";
 import { FaEuroSign } from "react-icons/fa";
 
@@ -34,7 +35,7 @@ type Booking = {
   duration?: number;
   service: string;
   customer: string;
-  status: 'upcoming' | 'completed' | 'no-show';
+  status: 'upcoming' | 'completed' | 'no-show' | 'accepted' | 'payment_pending' | 'pending' | 'shipped';
   employee?: string;
 };
 
@@ -188,89 +189,65 @@ export default function SalonDashboard() {
 
   const fetchTodayBookings = async (salonUid: string, date: string) => {
     try {
-      console.log('Fetching today\'s bookings for date:', date, 'salonUid:', salonUid);
+      console.log('Fetching bookings for salonUid:', salonUid);
       
       // Fetch all bookings for this salon
       const res = await fetch(`/api/bookings?salonUid=${encodeURIComponent(salonUid)}`);
       const data = await res.json();
       if (data.bookings) {
-        // Use German time for all date logic
-        const berlinNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-        const berlinYear = berlinNow.getFullYear();
-        const berlinMonth = berlinNow.getMonth() + 1;
-        const berlinDay = berlinNow.getDate();
-        const todayStrBerlin = `${berlinYear}-${String(berlinMonth).padStart(2, '0')}-${String(berlinDay).padStart(2, '0')}`;
-
-        // Transform all bookings for calendar
-        const allCalendarBookings = data.bookings.map((booking: any) => {
-          const startTime = booking.time;
-          const duration = booking.services.reduce((total: number, service: any) => total + (service.duration || 30), 0);
-          const [hours, minutes] = startTime.split(':').map(Number);
-          const endMinutes = hours * 60 + minutes + duration;
-          const endHours = Math.floor(endMinutes / 60);
-          const endMins = endMinutes % 60;
-          const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
-          const employeeNames = Array.from(
-            new Set(
-              (booking.services || [])
-                .map((s: any) => s.employee)
-                .filter(Boolean)
-            )
-          ).join(', ');
-          return {
-            id: booking._id,
-            time: startTime,
-            endTime: endTime,
-            duration,
-            service: booking.services.map((s: any) => s.name).join(', '),
-            customer: booking.customerName,
-            status: booking.status === 'confirmed' ? 'upcoming' : booking.status,
-            date: booking.date,
-            employee: employeeNames
-          };
-        });
+        // Transform all bookings for calendar (only those with time field)
+        const allCalendarBookings = data.bookings
+          .filter((booking: any) => booking.time)
+          .map((booking: any) => {
+            const startTime = booking.time;
+            const duration = (booking.services || []).reduce((total: number, service: any) => total + (service.duration || 30), 0);
+            const [hours, minutes] = startTime.split(':').map(Number);
+            const endMinutes = hours * 60 + minutes + duration;
+            const endHours = Math.floor(endMinutes / 60);
+            const endMins = endMinutes % 60;
+            const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+            const employeeNames = Array.from(
+              new Set(
+                (booking.services || [])
+                  .map((s: any) => s.employee)
+                  .filter(Boolean)
+              )
+            ).join(', ');
+            return {
+              id: booking._id,
+              time: startTime,
+              endTime: endTime,
+              duration,
+              service: (booking.services || booking.items || []).map((s: any) => s.name).join(', '),
+              customer: booking.customerName || booking.buyerName || 'Unbekannt',
+              status: booking.status === 'confirmed' ? 'upcoming' : booking.status,
+              date: booking.date,
+              employee: employeeNames
+            };
+          });
         setCalendarBookings(allCalendarBookings);
-        // Filter for today's bookings for the table (in German time)
-        const todayBookingsRaw = data.bookings.filter((b: any) => String(b.date) === todayStrBerlin);
-        // Only show upcoming bookings (whose end time is in the future)
-        const nowMinutes = berlinNow.getHours() * 60 + berlinNow.getMinutes();
-        const transformedBookings = todayBookingsRaw.map((booking: any) => {
-          const startTime = booking.time;
-          const duration = booking.services.reduce((total: number, service: any) => total + (service.duration || 30), 0);
-          const [hours, minutes] = startTime.split(':').map(Number);
-          const endMinutes = hours * 60 + minutes + duration;
-          const endHours = Math.floor(endMinutes / 60);
-          const endMins = endMinutes % 60;
-          const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
-          const employeeNames = Array.from(
-            new Set(
-              (booking.services || [])
-                .map((s: any) => s.employee)
-                .filter(Boolean)
-            )
-          ).join(', ');
-          return {
-            id: booking._id,
-            time: startTime,
-            endTime,
-            duration,
-            service: booking.services.map((s: any) => s.name).join(', '),
-            customer: booking.customerName,
-            status: booking.status === 'confirmed' ? 'upcoming' : booking.status,
-            employee: employeeNames
-          };
-        })
-        .filter((booking: any) => {
-          if (booking.status !== 'upcoming') return false;
-          const [endHour, endMin] = booking.endTime.split(':').map(Number);
-          const bookingEndMinutes = endHour * 60 + endMin;
-          return bookingEndMinutes > nowMinutes;
-        });
-        transformedBookings.sort((a: any, b: any) => a.time.localeCompare(b.time));
-        setTodayBookings(transformedBookings);
+
+        // Show recent active inquiries (pending, accepted, payment_pending) sorted by most recent
+        const recentInquiries = data.bookings
+          .filter((b: any) => ['pending', 'accepted', 'payment_pending', 'confirmed'].includes(b.status))
+          .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 10)
+          .map((booking: any) => {
+            const items = booking.items || booking.services || [];
+            return {
+              id: booking._id,
+              time: booking.time || new Date(booking.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+              endTime: '',
+              service: items.map((s: any) => s.name).join(', '),
+              customer: booking.customerName || booking.buyerName || 'Unbekannt',
+              status: booking.status === 'confirmed' ? 'upcoming' : (booking.status === 'pending' ? 'upcoming' : booking.status as any),
+              employee: ''
+            };
+          });
+        setTodayBookings(recentInquiries);
       }
     } catch (error) {
-      console.error('Error fetching today\'s bookings:', error);
+      console.error('Error fetching bookings:', error);
       setTodayBookings([]);
       setCalendarBookings([]);
     }
@@ -546,17 +523,17 @@ export default function SalonDashboard() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Bestellinfo
+                          Uhrzeit
                         </th>
                         <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produkt</th>
                         <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kunde</th>
-                        <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
+                        <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {todayBookings.length > 0 ? (
                         todayBookings.map((booking) => (
-                          <tr key={booking.id} className={booking.status !== 'upcoming' ? 'opacity-50' : ''}>
+                          <tr key={booking.id}>
                             <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
                               {booking.time}
                             </td>
@@ -567,32 +544,15 @@ export default function SalonDashboard() {
                               {booking.customer}
                             </td>
                             <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
-                              {booking.status === 'upcoming' && (
-                                <div className="flex justify-end items-center gap-1 sm:gap-2 -mr-2 sm:-mr-6">
-                                  <button
-                                    onClick={() => handleBookingAction(booking.id, 'no-show')}
-                                    className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-2 sm:px-3 py-1 rounded-md text-xs font-medium"
-                                  >
-                                    Ablehnen
-                                  </button>
-                                  <button
-                                    onClick={() => handleBookingAction(booking.id, 'complete')}
-                                    className="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-2 sm:px-3 py-1 rounded-md text-xs font-medium mr-3"
-                                  >
-                                    Abschließen
-                                  </button>
-                                </div>
-                              )}
-                              {booking.status === 'completed' && (
-                                <span className="text-green-600 bg-green-50 px-2 py-1 rounded-md text-xs font-medium">
-                                  Abgeschlossen
-                                </span>
-                              )}
-                              {booking.status === 'no-show' && (
-                                <span className="text-red-600 bg-red-50 px-2 py-1 rounded-md text-xs font-medium">
-                                  Nicht erschienen
-                                </span>
-                              )}
+                              <span
+                                className="px-2 py-1 rounded-md text-xs font-medium"
+                                style={{
+                                  backgroundColor: booking.status === 'upcoming' ? '#FEF3C7' : booking.status === 'accepted' ? '#D1FAE5' : booking.status === 'payment_pending' ? '#DBEAFE' : '#F3F4F6',
+                                  color: booking.status === 'upcoming' ? '#92400E' : booking.status === 'accepted' ? '#065F46' : booking.status === 'payment_pending' ? '#1E40AF' : '#374151'
+                                }}
+                              >
+                                {booking.status === 'upcoming' ? 'Ausstehend' : booking.status === 'accepted' ? 'Angenommen' : booking.status === 'payment_pending' ? 'Zahlung ausst.' : booking.status}
+                              </span>
                             </td>
                           </tr>
                         ))
@@ -612,6 +572,14 @@ export default function SalonDashboard() {
         </main>
         <Footer />
       </div>
+      {salon && (
+        <ChatWidget
+          userUid={salon.uid}
+          userName={user?.name || user?.username || salon.name || 'Verkäufer'}
+          userRole="seller"
+          salonUid={salon.uid}
+        />
+      )}
     </>
   );
 }

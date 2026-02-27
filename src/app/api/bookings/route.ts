@@ -100,24 +100,28 @@ export async function GET(req: NextRequest) {
 
     const requests = await collection.find(query).sort({ createdAt: -1 }).toArray();
 
-    if (isSystemAdmin && requests.length > 0) {
+    // Enrich bookings with seller info (salon name) for all queries
+    if (requests.length > 0) {
       const sellersCollection = db.collection("salons");
-      const sellerUids = [...new Set(requests.map(b => b.sellerUid || b.salonUid))];
-      const sellers = await sellersCollection.find(
-        { uid: { $in: sellerUids } },
-        { projection: { uid: 1, name: 1, email: 1 } }
-      ).toArray();
+      const sellerUids = [...new Set(requests.map(b => b.sellerUid || b.salonUid).filter(Boolean))];
+      if (sellerUids.length > 0) {
+        const sellers = await sellersCollection.find(
+          { uid: { $in: sellerUids } },
+          { projection: { uid: 1, name: 1, email: 1 } }
+        ).toArray();
 
-      const sellerMap = Object.fromEntries(sellers.map(s => [s.uid, s]));
+        const sellerMap = Object.fromEntries(sellers.map(s => [s.uid, s]));
 
-      const enrichedRequests = requests.map(request => ({
-        ...request,
-        sellerInfo: sellerMap[request.sellerUid || request.salonUid] || null,
-        salonInfo: sellerMap[request.sellerUid || request.salonUid] || null,
-      }));
+        const enrichedRequests = requests.map(request => ({
+          ...request,
+          sellerName: sellerMap[request.sellerUid || request.salonUid]?.name || null,
+          sellerInfo: sellerMap[request.sellerUid || request.salonUid] || null,
+          salonInfo: sellerMap[request.sellerUid || request.salonUid] || null,
+        }));
 
-      await client.close();
-      return NextResponse.json({ bookings: enrichedRequests });
+        await client.close();
+        return NextResponse.json({ bookings: enrichedRequests });
+      }
     }
 
     await client.close();
