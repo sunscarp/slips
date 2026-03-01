@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       const response = NextResponse.json(payload, { status: 200 });
       response.cookies.set('auth_token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false,
         sameSite: 'lax',
         path: '/',
         maxAge: 60 * 60 * 24 * 7,
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     const client = await MongoClient.connect(uri);
     const db = client.db(dbName);
-    
+
     // Try to find by username first, then by email
     let user = await db.collection('users').findOne({ username: identifier });
     if (!user) {
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     const response = NextResponse.json(payload, { status: 200 });
     response.cookies.set('auth_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
