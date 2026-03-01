@@ -22,7 +22,7 @@ export default function AboutPage() {
               className="text-4xl font-bold mb-4"
               style={{ color: COLORS.primary }}
             >
-              Über tastyslips
+              Über escortcheap
             </h1>
             <p className="text-lg text-gray-600 max-w-xl mx-auto">
               Dein diskreter Marktplatz für exklusive Artikel – sicher, anonym
@@ -39,7 +39,7 @@ export default function AboutPage() {
               Unsere Mission
             </h2>
             <p className="text-gray-700 leading-relaxed mb-4">
-              tastyslips verbindet Verkäufer und Käufer auf einer diskreten
+              escortcheap verbindet Verkäufer und Käufer auf einer diskreten
               Plattform. Wir schaffen einen sicheren Raum, in dem exklusive
               Artikel wie Socken, Unterwäsche, Sportbekleidung und mehr
               gehandelt werden können – ohne Umwege und mit maximaler

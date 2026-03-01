@@ -63,7 +63,7 @@ export async function sendOrderAcceptedEmail({
   <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #f0f0f0;">
     <!-- Header -->
     <div style="background: #F48FB1; padding: 28px 24px; text-align: center;">
-      <h1 style="margin: 0; color: #fff; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">tastyslips</h1>
+      <h1 style="margin: 0; color: #fff; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">escortcheap</h1>
     </div>
 
     <!-- Body -->
@@ -95,21 +95,21 @@ export async function sendOrderAcceptedEmail({
       ${addressBlock}
 
       <p style="margin: 24px 0 0 0; color: #999; font-size: 13px; text-align: center;">
-        Bei Fragen kannst du den Verkäufer direkt über den Chat auf tastyslips kontaktieren.
+        Bei Fragen kannst du den Verkäufer direkt über den Chat auf escortcheap kontaktieren.
       </p>
     </div>
 
     <!-- Footer -->
     <div style="background: #fafafa; padding: 16px 24px; text-align: center; border-top: 1px solid #f0f0f0;">
-      <p style="margin: 0; color: #ccc; font-size: 12px;">© ${new Date().getFullYear()} tastyslips. Alle Rechte vorbehalten.</p>
+      <p style="margin: 0; color: #ccc; font-size: 12px;">© ${new Date().getFullYear()} escortcheap. Alle Rechte vorbehalten.</p>
     </div>
   </div>
   `;
 
   await transporter.sendMail({
-    from: `"tastyslips" <${process.env.SMTP_EMAIL}>`,
+    from: `"escortcheap" <${process.env.SMTP_EMAIL}>`,
     to: buyerEmail,
-    subject: `Bestellung angenommen von ${sellerName} – tastyslips`,
+    subject: `Bestellung angenommen von ${sellerName} – escortcheap`,
     html,
   });
 }

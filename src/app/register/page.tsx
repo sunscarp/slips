@@ -8,7 +8,7 @@ const COLORS = {
   highlight: "#F48FB1",
 };
 
-type AccountType = "user" | "salon";
+type AccountType = "user" | "seller";
 
 export default function RegisterPage() {
   const [accountType, setAccountType] = useState<AccountType>("user");
@@ -35,9 +35,9 @@ export default function RegisterPage() {
       }
     }
 
-    if (accountType === "salon") {
+    if (accountType === "seller") {
       if (!email.trim()) {
-        setError("E-Mail-Adresse ist erforderlich für Salon-Konten");
+        setError("E-Mail-Adresse ist erforderlich für Seller-Konten");
         return;
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -45,7 +45,7 @@ export default function RegisterPage() {
         return;
       }
       if (!name.trim() || name.trim().length < 2) {
-        setError("Salon-Name muss mindestens 2 Zeichen lang sein");
+        setError("Seller-Name muss mindestens 2 Zeichen lang sein");
         return;
       }
     }
@@ -75,7 +75,7 @@ export default function RegisterPage() {
               email: email.trim().toLowerCase(),
               password,
               name: name.trim(),
-              role: "salon",
+              role: "seller",
             };
 
       const response = await fetch("/api/register", {
@@ -160,7 +160,7 @@ export default function RegisterPage() {
             letterSpacing: -1,
           }}
         >
-          tastyslips
+          escortcheap
         </div>
         <div
           style={{
@@ -202,7 +202,7 @@ export default function RegisterPage() {
           </button>
           <button
             type="button"
-            onClick={() => { setAccountType("salon"); setError(""); }}
+            onClick={() => { setAccountType("seller"); setError(""); }}
             style={{
               flex: 1,
               padding: "0.6rem 0",
@@ -212,11 +212,11 @@ export default function RegisterPage() {
               fontWeight: 600,
               fontSize: "0.9rem",
               transition: "all 0.2s",
-              background: accountType === "salon" ? COLORS.primary : "#fff",
-              color: accountType === "salon" ? "#fff" : COLORS.text,
+              background: accountType === "seller" ? COLORS.primary : "#fff",
+              color: accountType === "seller" ? "#fff" : COLORS.text,
             }}
           >
-            Salon
+            Seller
           </button>
         </div>
 
@@ -227,11 +227,13 @@ export default function RegisterPage() {
             textAlign: "center",
             marginBottom: 4,
             opacity: 0.8,
+            overflowWrap: "break-word",
+            wordBreak: "break-word",
           }}
         >
           {accountType === "user"
             ? "Erstelle ein Konto, um Produkte zu kaufen und Bestellungen zu verfolgen."
-            : "Registriere deinen Salon, um Produkte zu verkaufen und Bestellungen zu verwalten."}
+            : "Registriere dich als Seller, um Produkte zu verkaufen und Bestellungen zu verwalten."}
         </div>
         
         {error && (
@@ -261,15 +263,15 @@ export default function RegisterPage() {
           </label>
         )}
 
-        {accountType === "salon" && (
+        {accountType === "seller" && (
           <>
             <label style={{ color: COLORS.text, fontWeight: 500, fontSize: "1rem" }}>
-              Salon-Name
+              Seller-Name
               <input
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Name deines Salons"
+                placeholder="Dein Seller-Name"
                 style={inputStyle}
                 required
                 minLength={2}
@@ -281,7 +283,7 @@ export default function RegisterPage() {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="salon@example.com"
+                placeholder="seller@example.com"
                 style={inputStyle}
                 required
               />
@@ -331,7 +333,7 @@ export default function RegisterPage() {
           }}
           disabled={loading}
         >
-          {loading ? "Verarbeitung..." : accountType === "user" ? "Registrieren" : "Salon registrieren"}
+          {loading ? "Verarbeitung..." : accountType === "user" ? "Registrieren" : "Seller registrieren"}
         </button>
         <div style={{ textAlign: "center", marginTop: 8, fontSize: "0.98rem", color: COLORS.text }}>
           Bereits ein Konto?{" "}

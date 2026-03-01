@@ -461,7 +461,7 @@ export default function SalonDashboard() {
     return <AuthPrompt />;
   }
 
-  if (userRole && userRole !== "salon" && !isSystemAdmin) {
+  if (userRole && userRole !== "salon" && userRole !== "seller" && !isSystemAdmin) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
         <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md mx-4">

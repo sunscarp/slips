@@ -9,6 +9,16 @@ const COLORS = {
   highlight: "#F48FB1",
 };
 
+function slugify(str: string): string {
+  return str
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036F]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 
 
 export default function AdminDashboard() {
@@ -412,7 +422,7 @@ export default function AdminDashboard() {
     {
       id: "users",
       title: "Benutzer",
-      value: users.filter(u => !u.role).length,
+      value: users.filter(u => u.role === "buyer" || !u.role).length,
       icon: (
         <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87M16 7a4 4 0 11-8 0 4 4 0 018 0zm6 13v-2a4 4 0 00-3-3.87M6 7a4 4 0 100 8 4 4 0 000-8z" />
@@ -772,7 +782,7 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                       <button
-                        onClick={() => window.open(`/seller/${salon.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")}`, '_blank')}
+                        onClick={() => window.open(`/seller/${slugify(salon.name || "")}`, '_blank')}
                         style={{
                           background: COLORS.primary,
                           color: "#fff",
@@ -903,7 +913,7 @@ export default function AdminDashboard() {
               color: "#000",
               marginBottom: 16,
             }}>
-              Registrierte Käufer ({users.filter(u => !u.role && (!userSearch || u.email?.toLowerCase().includes(userSearch.toLowerCase()))).length})
+              Registrierte Käufer ({users.filter(u => (u.role === "buyer" || !u.role) && (!userSearch || u.email?.toLowerCase().includes(userSearch.toLowerCase()))).length})
             </h3>
             {/* User search input */}
             <div style={{ display: "flex", gap: "8px", marginBottom: 16, flexWrap: "wrap" }}>
@@ -924,12 +934,12 @@ export default function AdminDashboard() {
                 }}
               />
             </div>
-            {users.filter(u => !u.role && (!userSearch || u.email?.toLowerCase().includes(userSearch.toLowerCase()))).length === 0 ? (
+            {users.filter(u => (u.role === "buyer" || !u.role) && (!userSearch || u.email?.toLowerCase().includes(userSearch.toLowerCase()))).length === 0 ? (
               <p style={{ color: "#666", fontStyle: "italic" }}>Keine Käufer gefunden.</p>
             ) : (
               <div style={{ display: "grid", gap: "12px" }}>
                 {users
-                  .filter(user => !user.role && (!userSearch || user.email?.toLowerCase().includes(userSearch.toLowerCase())))
+                  .filter(user => (user.role === "buyer" || !user.role) && (!userSearch || user.email?.toLowerCase().includes(userSearch.toLowerCase())))
                   .sort((a, b) => {
                     const aStats = userBookingStats[a.uid] || { rating: 5, total: 0 };
                     const bStats = userBookingStats[b.uid] || { rating: 5, total: 0 };

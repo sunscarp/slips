@@ -12,9 +12,9 @@ const COLORS = {
 
 const faqs = [
   {
-    question: "Was ist tastyslips?",
+    question: "Was ist escortcheap?",
     answer:
-      "tastyslips ist ein diskreter Online-Marktplatz, auf dem Verkäuferinnen und Verkäufer exklusive Artikel wie Socken, Unterwäsche, Sportbekleidung und mehr anbieten können. Käufer können Produkte entdecken, Anfragen stellen und direkt mit Verkäufern in Kontakt treten.",
+      "escortcheap ist ein diskreter Online-Marktplatz, auf dem Verkäuferinnen und Verkäufer exklusive Artikel wie Socken, Unterwäsche, Sportbekleidung und mehr anbieten können. Käufer können Produkte entdecken, Anfragen stellen und direkt mit Verkäufern in Kontakt treten.",
   },
   {
     question: "Muss ich mich als Käufer registrieren?",
@@ -71,7 +71,7 @@ export default function FaqPage() {
             Häufig gestellte Fragen
           </h1>
           <p className="text-gray-600 text-center mb-10">
-            Alles, was du über tastyslips wissen musst
+            Alles, was du über escortcheap wissen musst
           </p>
 
           <div className="space-y-4">

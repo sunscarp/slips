@@ -87,7 +87,7 @@ function ServiceForm({ initial, onSave, onCancel, loading }: any) {
   async function handleSubmit(e: any) {
     e.preventDefault();
     const price = Number(form.price || 0);
-    if (!form.name || price <= 0) {
+    if (!form.name || (!form.wearDurationEnabled && price <= 0)) {
       alert("Bitte gib einen Namen und einen gültigen Preis an.");
       return;
     }

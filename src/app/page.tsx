@@ -171,7 +171,7 @@ function HeroSection({ onSearch }: { onSearch: (query: { name: string; treatment
               lineHeight: 1.08,
             }}
           >
-            tastyslips
+            escortcheap
           </div>
           <div
             style={{

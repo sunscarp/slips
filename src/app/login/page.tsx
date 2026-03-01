@@ -42,7 +42,7 @@ export default function LoginPage() {
 
       if (data.role === "admin") {
         window.location.href = "/system/admin";
-      } else if (data.role === "salon") {
+      } else if (data.role === "salon" || data.role === "seller") {
         window.location.href = "/admin/dashboard";
       } else {
         const redirectUrl = localStorage.getItem("bookme_redirect_after_login");
@@ -97,7 +97,7 @@ export default function LoginPage() {
             letterSpacing: -1,
           }}
         >
-          tastyslips
+          escortcheap
         </div>
         <div
           style={{

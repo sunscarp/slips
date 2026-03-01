@@ -135,7 +135,7 @@ export default function Navbar({ user, onLogout, currentPath, viewingSalonUid, s
               letterSpacing: -1,
             }}
           >
-            tastyslips
+            escortcheap
           </a>
           
           {/* Desktop Navigation */}

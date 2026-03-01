@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | tastyslips",
-    default: "tastyslips",
+    template: "%s | escortcheap",
+    default: "escortcheap",
   },
   description: "Dein diskreter Marktplatz für exklusive Artikel",
 };

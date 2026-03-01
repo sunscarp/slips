@@ -39,7 +39,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
     fetch("/api/auth/me")
       .then(r => r.ok ? r.json() : null)
       .then(u => {
-        if (u && u.role !== "salon" && u.role !== "admin") {
+        if (u && u.role !== "salon" && u.role !== "seller" && u.role !== "admin") {
           setInternalUser({ email: u.email, username: u.username });
         } else {
           setInternalUser(null);
@@ -142,7 +142,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
           letterSpacing: -1,
         }}
       >
-        tastyslips
+        escortcheap
       </a>
       
       {/* Desktop Navigation */}

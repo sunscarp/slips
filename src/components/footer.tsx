@@ -28,7 +28,7 @@ export default function Footer() {
           letterSpacing: 1,
         }}
       >
-        TastySlips
+        Escortcheap
       </div>
       {/* Legal Links Section */}
       <div style={{ 
@@ -130,7 +130,7 @@ export default function Footer() {
         fontSize: "0.95rem",
         marginBottom: "8px"
       }}>
-        hello@tastyslips.com
+        hello@escortcheap.com
       </div>
       <div style={{ 
         fontSize: "0.9rem", 
@@ -138,7 +138,7 @@ export default function Footer() {
         opacity: 0.5,
         letterSpacing: 0.5
       }}>
-        © {new Date().getFullYear()} tastyslips. All rights reserved.
+        © {new Date().getFullYear()} escortcheap. All rights reserved.
       </div>
     </footer>
   );
