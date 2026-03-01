@@ -529,7 +529,7 @@ export default function SalonPage() {
                                       }`}
                                       onClick={() => toggleServiceInCart(service)}
                                     >
-                                      {inCart ? `✕ Entfernen (€${inCart.price.toFixed(2)})` : 'Hinzufügen'}
+                                      {inCart ? `✕ Entfernen (€${(inCart.price ?? 0).toFixed(2)})` : 'Hinzufügen'}
                                     </button>
                                   </>
                                 );
